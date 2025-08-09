@@ -1,0 +1,56 @@
+version: "3.8"
+
+services:
+  # Redis缓存服务
+  redis:
+    image: redis:7-alpine
+    container_name: viba_redis
+    ports:
+      - "6379:6379"
+    networks:
+      - viba_network
+    volumes:
+      - redis_data:/data
+
+  # Flask应用
+  app:
+    build: .
+    container_name: viba_app
+    ports:
+      - "5000:5000"
+    environment:
+      # 数据库配置 - 连接到已存在的数据库
+      POSTGRES_HOST: ${POSTGRES_HOST:-your_database_host}
+      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      POSTGRES_DB: ${POSTGRES_DB:-viba}
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+
+      # Redis配置
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_DB: 0
+
+      # AWS S3配置
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      S3_BUCKET: ${S3_BUCKET:-viba-images}
+      S3_REGION: ${S3_REGION:-us-east-1}
+
+      # 嵌入模型配置
+      EMBEDDING_MODEL: ${EMBEDDING_MODEL:-sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2}
+    depends_on:
+      - redis
+    volumes:
+      - ./temp_uploads:/app/temp_uploads
+      - ./logs:/app/logs
+    networks:
+      - viba_network
+    restart: unless-stopped
+
+volumes:
+  redis_data:
+
+networks:
+  viba_network:
+    driver: bridge

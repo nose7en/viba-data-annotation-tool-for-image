@@ -1,0 +1,60 @@
+# 忽略 Python 缓存和编译文件
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# 忽略虚拟环境文件夹
+venv/
+env/
+.venv/
+.env
+
+# 忽略包管理器的依赖和打包文件
+*.egg-info/
+dist/
+build/
+*.egg
+pip-wheel-metadata/
+
+# 忽略单元测试和代码覆盖率报告
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+
+# 忽略 IDE 和编辑器配置文件
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 忽略操作系统生成的文件
+.DS_Store
+Thumbs.db
+._*
+
+# 忽略日志文件
+*.log
+
+# 忽略本地配置文件 (例如，包含密码或API密钥的文件)
+config.ini
+.env.*
+secrets.yml
+
+# 忽略大型数据文件和标注结果
+# 建议将所有数据集和图片放在一个文件夹（如 'data/' 或 'datasets/'）下
+# 然后在这里忽略它们，避免将大数据上传到仓库
+data/
+datasets/
+images/
+annotations/
+*.csv
+*.json
+*.xml
+*.jpg
+*.jpeg
+*.png
+*.bmp
+
+#

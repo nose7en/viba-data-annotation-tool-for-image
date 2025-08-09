@@ -1,0 +1,26 @@
+# Core Flask
+Flask==2.3.3
+flask-cors==4.0.0
+werkzeug==2.3.7
+
+# Database
+psycopg2-binary
+
+# Cache
+redis==5.0.0
+
+# AWS S3
+boto3==1.28.40
+botocore==1.31.40
+
+# Utilities
+python-dotenv==1.0.0
+gunicorn==21.2.0
+
+# Image processing
+Pillow==10.0.0
+
+# ML/Embeddings (Optional - already installed)
+# sentence-transformers==5.1.0
+# numpy==1.26.0  # Automatically installed with sentence-transformers
+# torch==2.8.0   # Automatically installed with sentence-transformers
