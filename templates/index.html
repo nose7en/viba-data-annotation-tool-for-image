@@ -417,6 +417,19 @@
             background-color: #007bff;
             transition: width 0.3s ease;
         }
+
+        .loading-message {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+            font-style: italic;
+        }
+
+        @keyframes loading {
+            0% { width: 0%; }
+            50% { width: 100%; }
+            100% { width: 0%; }
+        }
     </style>
 </head>
 <body>
@@ -426,7 +439,7 @@
             <h2>图片上传</h2>
             <div class="note">宽不得少于1080px，宽长比建议为9:16（1080*1920），需至少2:3（1080*1620）</div>
             <div class="upload-area" id="mainUploadArea">
-                <div>
+                <div id="uploadContent">
                     <p>拖拽图片到这里或点击上传</p>
                     <p style="color: #666; font-size: 12px;">
                         支持格式：PNG, JPG<br>
@@ -442,290 +455,281 @@
 
         <!-- 右侧面板 -->
         <div class="right-panel">
-            <h2>标注信息</h2>
-            <div class="big-note">🥹输入部分全部用英文，拜托仔细检查填写～</div>
-            <form id="annotationForm">
-                <!-- 图片主题 -->
-                <div class="form-group">
-                    <label class="big-section-title" for="theme">图片所属主题</label>
-                    <select class="form-control" id="theme" name="theme">
-                        <option value="">请选择主题</option>
-                        <option value="fashion">时尚</option>
-                        <option value="lifestyle">生活方式</option>
-                        <option value="product">产品</option>
-                        <option value="portrait">人像</option>
-                    </select>
-                </div>
-
-                <!-- 图片类型 -->
-                <div class="form-group">
-                    <label class="big-section-title">图片类型 <span class="required">*</span></label>
-                    <div class="radio-group">
-                        <div class="radio-item">
-                            <input type="radio" id="generated" name="reference_type" value="1" required>
-                            <label for="generated">生成图</label>
-                        </div>
-                        <div class="radio-item">
-                            <input type="radio" id="matching" name="reference_type" value="2" required>
-                            <label for="matching">匹配图</label>
-                        </div>
+            <!-- 加载状态显示区域 -->
+            <div id="loadingState" style="display: none;">
+                <div style="text-align: center; padding: 50px;">
+                    <div style="font-size: 18px; color: #666; margin-bottom: 20px;">
+                        🔄 正在加载数据...
+                    </div>
+                    <div style="width: 200px; height: 4px; background-color: #f0f0f0; border-radius: 2px; overflow: hidden; margin: 0 auto;">
+                        <div style="width: 100%; height: 100%; background-color: #007bff; animation: loading 2s ease-in-out infinite;"></div>
                     </div>
                 </div>
-
-                <!-- 生成图条件区域 -->
-                <div id="generatedSection" class="conditional-section">
-                    <h3 class="section-title">生成图信息</h3>
-                    
+            </div>
+            
+            <!-- 主要内容区域 -->
+            <div id="mainContent">
+                <h2>标注信息</h2>
+                <div class="big-note">🥹输入部分全部用英文，拜托仔细检查填写～</div>
+                <form id="annotationForm">
+                    <!-- 图片主题 -->
                     <div class="form-group">
-                        <label for="contentPrompt">生成时所用的提示词 <span class="required">*</span></label>
-                        <textarea class="form-control" id="contentPrompt" name="content_prompt" rows="3" placeholder="请输入生成图片时使用的提示词"></textarea>
+                        <label class="big-section-title" for="theme">图片所属主题</label>
+                        <select class="form-control" id="theme" name="theme">
+                            <option value="">正在加载主题...</option>
+                        </select>
+                        <div id="themeDescription" style="display: none; margin-top: 5px; font-size: 12px; color: #666;"></div>
                     </div>
 
+                    <!-- 图片类型 -->
                     <div class="form-group">
-                        <label for="mlModel">使用模型 <span class="required">*</span></label>
-                        <input type="text" class="form-control" id="mlModel" name="ml_model_source" placeholder="请输入模型名称或URL">
-                    </div>
-
-                    <!-- 姿态参考 -->
-                    <div class="form-group">
-                        <label>姿态参考</label>
-                        <button type="button" class="add-button" onclick="addReferenceImage('pose')">+ 添加姿态参考图</button>
-                        <div id="poseImagesContainer"></div>
-                    </div>
-
-                    <!-- 商品参考 -->
-                    <div class="form-group">
-                        <label>商品参考</label>
-                        <button type="button" class="add-button" onclick="addReferenceImage('outfit')">+ 添加商品参考图</button>
-                        <div id="outfitImagesContainer"></div>
-                    </div>
-
-                    <!-- 场景参考 -->
-                    <div class="form-group">
-                        <label>场景参考</label>
-                        <button type="button" class="add-button" onclick="addReferenceImage('scene')">+ 添加场景参考图</button>
-                        <div id="sceneImagesContainer"></div>
-                    </div>
-
-                    <!-- 构图参考 -->
-                    <div class="form-group">
-                        <label>构图参考</label>
-                        <button type="button" class="add-button" onclick="addReferenceImage('composition')">+ 添加构图参考图</button>
-                        <div id="compositionImagesContainer"></div>
-                    </div>
-
-                    <!-- 风格参考 -->
-                    <div class="form-group">
-                        <label>风格参考</label>
-                        <button type="button" class="add-button" onclick="addReferenceImage('style')">+ 添加风格参考图</button>
-                        <div id="styleImagesContainer"></div>
-                    </div>
-                </div>
-
-                <!-- 匹配图条件区域 -->
-                <div id="matchingSection" class="conditional-section">
-                    <h3 class="section-title">匹配图信息</h3>
-                    
-                    <div class="form-group">
-                        <label for="productIds">商品ID</label>
-                        <input type="text" class="form-control" id="productIds" name="product_item_ids" placeholder="请输入商品ID">
-                    </div>
-
-                    <div class="form-group">
-                        <label for="poseDescription">姿势描述</label>
-                        <textarea class="form-control" id="poseDescription" name="pose_description" rows="3" placeholder="请描述图片中人物的姿势"></textarea>
-                    </div>
-
-                    <div class="form-group">
-                        <label>是否可被用于换脸 <span class="required">*</span></label>
+                        <label class="big-section-title">图片类型 <span class="required">*</span></label>
                         <div class="radio-group">
                             <div class="radio-item">
-                                <input type="radio" id="faceYes" name="can_be_used_for_face_switching" value="true">
-                                <label for="faceYes">是</label>
+                                <input type="radio" id="generated" name="reference_type" value="1" required>
+                                <label for="generated">生成图</label>
                             </div>
                             <div class="radio-item">
-                                <input type="radio" id="faceNo" name="can_be_used_for_face_switching" value="false">
-                                <label for="faceNo">否</label>
+                                <input type="radio" id="matching" name="reference_type" value="2" required>
+                                <label for="matching">匹配图</label>
                             </div>
                         </div>
-                        <div class="note">判断标准：能否展示和链接到对应的商品</div>
                     </div>
-                </div>
 
-                <!-- 风格标签 -->
-                <div class="form-group">
-                    <label class="big-section-title">风格标签 <span class="required">*</span></label>
-                    <div class="note">注意，这里指的是图片整体的艺术风格，而不是衣服的风格</div>
-                    <div id="styleTagsContainer">
-                        <div class="tag-selection" id="styleTag0">
-                            <select class="form-control" name="style_level1" style="margin-bottom: 10px;">
-                                <option value="">选择一级风格</option>
-                                <option value="realistic">写实</option>
-                                <option value="artistic">艺术</option>
-                                <option value="cartoon">卡通</option>
-                            </select>
-                            <select class="form-control" name="style_level2" style="margin-bottom: 10px;" disabled>
-                                <option value="">选择二级风格</option>
-                            </select>
-                            <div class="tag-wall" id="styleTagWall0"></div>
+                    <!-- 生成图条件区域 -->
+                    <div id="generatedSection" class="conditional-section">
+                        <h3 class="section-title">生成图信息</h3>
+                        
+                        <div class="form-group">
+                            <label for="contentPrompt">生成时所用的提示词 <span class="required">*</span></label>
+                            <textarea class="form-control" id="contentPrompt" name="content_prompt" rows="3" placeholder="请输入生成图片时使用的提示词"></textarea>
                         </div>
-                    </div>
-                    <button type="button" class="add-button" onclick="addStyleTag()">+ 添加风格标签</button>
-                </div>
 
-                <!-- 场合标签 -->
-                <div class="form-group">
-                    <label class="big-section-title">场合标签 <span class="required">*</span></label>
-                    <div id="sceneTagsContainer">
-                        <div class="tag-selection" id="sceneTag0">
-                            <select class="form-control" name="scene_level1" style="margin-bottom: 10px;">
-                                <option value="">选择一级场合</option>
-                                <option value="daily">日常</option>
-                                <option value="work">工作</option>
-                                <option value="party">聚会</option>
-                                <option value="outdoor">户外</option>
-                            </select>
-                            <select class="form-control" name="scene_level2" style="margin-bottom: 10px;" disabled>
-                                <option value="">选择二级场合</option>
-                            </select>
-                            <div class="tag-wall" id="sceneTagWall0"></div>
+                        <div class="form-group">
+                            <label for="mlModel">使用模型 <span class="required">*</span></label>
+                            <input type="text" class="form-control" id="mlModel" name="ml_model_source" placeholder="请输入模型名称或URL">
                         </div>
-                    </div>
-                    <button type="button" class="add-button" onclick="addSceneTag()">+ 添加场合标签</button>
-                </div>
 
-                <!-- 模特数据标签 -->
-                <div class="form-group">
-                    <label class="big-section-title">模特数据标签 <span class="required">*</span></label>
-                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-top: 10px;">
-                        <div>
-                            <label>年龄</label>
-                            <select class="form-control" name="age" required>
-                                <option value="">选择年龄</option>
-                                <option value="teenager">Teenager(14-17)</option>
-                                <option value="young_adult">Young adult (18-30)</option>
-                                <option value="middle_aged">Middle Aged (31-60)</option>
-                                <option value="senior_adult">Senior Adult (61-80)</option>
-                             </select>
+                        <!-- 姿态参考 -->
+                        <div class="form-group">
+                            <label>姿态参考</label>
+                            <div style="display: flex; gap: 10px; align-items: center;">
+                                <button type="button" class="add-button" onclick="addReferenceImage('pose')">+ 添加姿态参考图</button>
+                            </div>
+                            <div id="poseImagesContainer"></div>
                         </div>
-                        <div>
-                            <label>性别</label>
-                            <select class="form-control" name="gender" required>
-                                <option value="">选择性别</option>
-                                <option value="male">Male</option>
-                                <option value="female">Female</option>
-                            </select>
+
+                        <!-- 商品参考 -->
+                        <div class="form-group">
+                            <label>商品参考</label>
+                            <div style="display: flex; gap: 10px; align-items: center;">
+                                <button type="button" class="add-button" onclick="addReferenceImage('outfit')">+ 添加商品参考图</button>
+                            </div>
+                            <div id="outfitImagesContainer"></div>
                         </div>
-                        <div>
-                            <label>种族</label>
-                            <select class="form-control" name="race" required>
-                                <option value="">选择种族</option>
-                                <option value="east_asian">东亚人</option>
-                                <option value="south_asian">南亚人</option>
-                                <option value="white">白人</option>
-                                <option value="black">非洲人</option>
-                                <option value="latino">拉丁裔</option>
-                            </select>
+
+                        <!-- 场景参考 -->
+                        <div class="form-group">
+                            <label>场景参考</label>
+                            <div style="display: flex; gap: 10px; align-items: center;">
+                                <button type="button" class="add-button" onclick="addReferenceImage('scene')">+ 添加场景参考图</button>
+                            </div>
+                            <div id="sceneImagesContainer"></div>
                         </div>
-                        <div>
-                            <label>体型</label>
-                            <select class="form-control" name="size" required>
-                                <option value="">选择体型</option>
-                                <option value="petite">Petite</option>
-                                <option value="standard">Standard</option>
-                                <option value="curve">Curve</option>
-                                <option value="tall">Tall</option>
-                                <option value="maternity">Maternity</option>
-                            </select>
+
+                        <!-- 构图参考 -->
+                        <div class="form-group">
+                            <label>构图参考</label>
+                            <div style="display: flex; gap: 10px; align-items: center;">
+                                <button type="button" class="add-button" onclick="addReferenceImage('composition')">+ 添加构图参考图</button>
+                            </div>
+                            <div id="compositionImagesContainer"></div>
+                        </div>
+
+                        <!-- 风格参考 -->
+                        <div class="form-group">
+                            <label>风格参考</label>
+                            <div style="display: flex; gap: 10px; align-items: center;">
+                                <button type="button" class="add-button" onclick="addReferenceImage('style')">+ 添加风格参考图</button>
+                            </div>
+                            <div id="styleImagesContainer"></div>
                         </div>
                     </div>
-                    <div class="note">
-                            <p><a style="font-weight: bold">💃Notes:</a></p>
-                            <p class = "note-inside"><a style="font-weight: bold">Petite:</a> Heights under 5'4" (163cm), with proportions scaled for a smaller frame.</p>
-                            <p class = "note-inside"><a style="font-weight: bold">Standard:</a> Industry's standard size range (e.g., US 0-12).</p>
-                            <p class = "note-inside"><a style="font-weight: bold">Curve:</a> "Plus Size". For fuller-figured body types (e.g., US 14+).</p>
-                            <p class = "note-inside"><a style="font-weight: bold">Tall:</a> Heights over 5'9" (175cm), with longer limb and torso proportions.</p>
-                            <p class = "note-inside"><a style="font-weight: bold">Maternity:</a> Specifically designed to accommodate a pregnant figure, with features like an expanding belly.</p>
-                    </div>
-                </div>
 
-                <!-- 姿态标签 -->
-                <div class="form-group">
-                    <label class="big-section-title" for="poseTag">姿态标签 (选填)</label>
-                    <select class="form-control" id="poseTag" name="pose_tag_ids">
-                        <option value="">选择姿态</option>
-                        <option value="standing">站立</option>
-                        <option value="sitting">坐着</option>
-                        <option value="walking_forward">行走</option>
-                        <option value="lying_down">躺着</option>
-                        <option value="crouching">蹲着</option>
-                        <option value="kneeling">跪着</option>
-                        <option value="running">奔跑</option>
-                        <option value="dancing">舞蹈</option>
-                    </select>
-                </div>
+                    <!-- 匹配图条件区域 -->
+                    <div id="matchingSection" class="conditional-section">
+                        <h3 class="section-title">匹配图信息</h3>
+                        
+                        <div class="form-group">
+                            <label for="productIds">商品ID</label>
+                            <input type="text" class="form-control" id="productIds" name="product_item_ids" placeholder="请输入商品ID">
+                        </div>
 
-                <!-- 构图标注 -->
-                <div class="form-group">
-                    <label class="big-section-title">构图标注 (选填)</label>
-                    <div class="note">📸<a style="font-weight: bold;">Note:</a> 角度如果比较普通、是“平视“类型就不用填写～重点在于打上图片特点标签</div>
-                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-top: 10px;">
-                        <div>
-                            <label>镜头类型</label>
-                            <select class="form-control" name="camera_type">
-                                <option value="">选择镜头类型</option>
-                                <option value="close_up">特写</option>
-                                <option value="medium_shot">中景</option>
-                                <option value="long_shot">远景</option>
-                                <option value="extreme_wide_shot">大远景</option>
-                            </select>
+                        <div class="form-group">
+                            <label for="poseDescription">姿势描述</label>
+                            <textarea class="form-control" id="poseDescription" name="pose_description" rows="3" placeholder="请描述图片中人物的姿势"></textarea>
                         </div>
-                        <div>
-                            <label>镜头角度</label>
-                            <select class="form-control" name="camera_angle">
-                                <option value="">选择镜头角度</option>
-                                <option value="high_angle">俯角</option>
-                                <option value="low_angle">仰角</option>
-                                <option value="wide_angle">广角</option>
-                                <option value="fisheye">鱼眼</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label>人身比例</label>
-                            <select class="form-control" name="body_ratio">
-                                <option value="">选择人身比例</option>
-                                <option value="head_shot">头部特写</option>
-                                <option value="head_shoulders">头肩比例</option>
-                                <option value="bust_shot">半身像</option>
-                                <option value="three_quarter">四分之三身</option>
-                                <option value="full_body">全身像</option>
-                                <option value="multiple_people">多人构图</option>
-                            </select>
-                        </div>
-                        <div>
-                            <label>人物位置</label>
-                            <select class="form-control" name="character_position">
-                                <option value="">选择人物位置</option>
-                                <option value="center">居中</option>
-                                <option value="left">左侧</option>
-                                <option value="right">右侧</option>
-                                <option value="top">偏上</option>
-                                <option value="bottom">偏下</option>
-                            </select>
+
+                        <div class="form-group">
+                            <label>是否可被用于换脸 <span class="required">*</span></label>
+                            <div class="radio-group">
+                                <div class="radio-item">
+                                    <input type="radio" id="faceYes" name="can_be_used_for_face_switching" value="true">
+                                    <label for="faceYes">是</label>
+                                </div>
+                                <div class="radio-item">
+                                    <input type="radio" id="faceNo" name="can_be_used_for_face_switching" value="false">
+                                    <label for="faceNo">否</label>
+                                </div>
+                            </div>
+                            <div class="note">判断标准：能否展示和链接到对应的商品</div>
                         </div>
                     </div>
-                </div>
 
-                <!-- 服装标注 -->
-                <div class="form-group">
-                    <label class="big-section-title">服装标注</label>
-                    <div id="outfitDetailsContainer">
+                    <!-- 风格标签 -->
+                    <div class="form-group">
+                        <label class="big-section-title">风格标签 <span class="required">*</span></label>
+                        <div class="note">注意，这里指的是图片整体的艺术风格，而不是衣服的风格</div>
+                        <div id="styleTagsContainer">
+                            <div class="tag-selection" id="styleTag0">
+                                <select class="form-control" name="style_level1" style="margin-bottom: 10px;">
+                                    <option value="">正在加载...</option>
+                                </select>
+                                <select class="form-control" name="style_level2" style="margin-bottom: 10px;" disabled>
+                                    <option value="">选择二级风格</option>
+                                </select>
+                                <div class="tag-wall" id="styleTagWall0"></div>
+                            </div>
+                        </div>
+                        <button type="button" class="add-button" onclick="addStyleTag()" id="addStyleTagBtn">+ 添加风格标签</button>
                     </div>
-                    <button type="button" class="add-button" onclick="addOutfitDetail()">+ 添加服装标注</button>
-                </div>
 
-                <button type="submit" class="submit-button" id="submitButton">提交标注</button>
-            </form>
+                    <!-- 场合标签 -->
+                    <div class="form-group">
+                        <label class="big-section-title">场合标签 <span class="required">*</span></label>
+                        <div id="sceneTagsContainer">
+                            <div class="tag-selection" id="sceneTag0">
+                                <select class="form-control" name="scene_level1" style="margin-bottom: 10px;">
+                                    <option value="">正在加载...</option>
+                                </select>
+                                <select class="form-control" name="scene_level2" style="margin-bottom: 10px;" disabled>
+                                    <option value="">选择二级场合</option>
+                                </select>
+                                <div class="tag-wall" id="sceneTagWall0"></div>
+                            </div>
+                        </div>
+                        <button type="button" class="add-button" onclick="addSceneTag()" id="addSceneTagBtn">+ 添加场合标签</button>
+                    </div>
+
+                    <!-- 模特数据标签 -->
+                    <div class="form-group">
+                        <label class="big-section-title">模特数据标签 <span class="required">*</span></label>
+                        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-top: 10px;">
+                            <div>
+                                <label>年龄</label>
+                                <select class="form-control" name="age" required>
+                                    <option value="">正在加载...</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label>性别</label>
+                                <select class="form-control" name="gender" required>
+                                    <option value="">正在加载...</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label>种族</label>
+                                <select class="form-control" name="race" required>
+                                    <option value="">正在加载...</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label>体型</label>
+                                <select class="form-control" name="size" required>
+                                    <option value="">正在加载...</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="note">
+                                <p><a style="font-weight: bold">💃Notes:</a></p>
+                                <p class = "note-inside"><a style="font-weight: bold">Petite:</a> Heights under 5'4" (163cm), with proportions scaled for a smaller frame.</p>
+                                <p class = "note-inside"><a style="font-weight: bold">Standard:</a> Industry's standard size range (e.g., US 0-12).</p>
+                                <p class = "note-inside"><a style="font-weight: bold">Curve:</a> "Plus Size". For fuller-figured body types (e.g., US 14+).</p>
+                                <p class = "note-inside"><a style="font-weight: bold">Tall:</a> Heights over 5'9" (175cm), with longer limb and torso proportions.</p>
+                                <p class = "note-inside"><a style="font-weight: bold">Maternity:</a> Specifically designed to accommodate a pregnant figure, with features like an expanding belly.</p>
+                        </div>
+                    </div>
+
+                    <!-- 姿态标签 -->
+                    <div class="form-group">
+                        <label class="big-section-title" for="poseTag">姿态标签</label>
+                        <select class="form-control" id="poseTag" name="pose_tag_ids">
+                            <option value="">正在加载...</option>
+                        </select>
+                    </div>
+
+                    <!-- 构图标注 -->
+                    <div class="form-group">
+                        <label class="big-section-title">构图标注</label>
+                        <div class="note">📸<a style="font-weight: bold;">Note:</a> 角度如果比较普通、是"平视"类型就不用填写～重点在于打上图片特点标签</div>
+                        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-top: 10px;">
+                            <div>
+                                <label>镜头类型</label>
+                                <select class="form-control" name="camera_type">
+                                    <option value="">选择镜头类型</option>
+                                    <option value="close_up">特写</option>
+                                    <option value="medium_shot">中景</option>
+                                    <option value="long_shot">远景</option>
+                                    <option value="extreme_wide_shot">大远景</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label>镜头角度</label>
+                                <select class="form-control" name="camera_angle">
+                                    <option value="">选择镜头角度</option>
+                                    <option value="high_angle">俯角</option>
+                                    <option value="low_angle">仰角</option>
+                                    <option value="wide_angle">广角</option>
+                                    <option value="fisheye">鱼眼</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label>人身比例</label>
+                                <select class="form-control" name="body_ratio">
+                                    <option value="">选择人身比例</option>
+                                    <option value="head_shot">头部特写</option>
+                                    <option value="head_shoulders">头肩比例</option>
+                                    <option value="bust_shot">半身像</option>
+                                    <option value="three_quarter">四分之三身</option>
+                                    <option value="full_body">全身像</option>
+                                    <option value="multiple_people">多人构图</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label>人物位置</label>
+                                <select class="form-control" name="character_position">
+                                    <option value="">选择人物位置</option>
+                                    <option value="center">居中</option>
+                                    <option value="left">左侧</option>
+                                    <option value="right">右侧</option>
+                                    <option value="top">偏上</option>
+                                    <option value="bottom">偏下</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 服装标注 -->
+                    <div class="form-group">
+                        <label class="big-section-title">服装标注</label>
+                        <div id="outfitDetailsContainer">
+                        </div>
+                        <button type="button" class="add-button" onclick="addOutfitDetail()" id="addOutfitBtn">+ 添加服装标注</button>
+                    </div>
+
+                    <button type="submit" class="submit-button" id="submitButton">提交标注</button>
+                </form>
+            </div>
         </div>
     </div>
 
@@ -757,6 +761,41 @@
             loaded: false
         };
 
+        async function loadThemesFromAPI() {
+            try {
+                const response = await fetch('/api/themes', {
+                    method: 'GET'
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    const themeSelect = document.getElementById('theme');
+                    
+                    // 清空现有选项，保留默认选项
+                    themeSelect.innerHTML = '<option value="">请选择主题</option>';
+                    
+                    // 添加从API获取的主题
+                    result.data.forEach(theme => {
+                        const option = document.createElement('option');
+                        option.value = theme.unique_id;  // 使用真实的主题ID
+                        option.textContent = theme.title;  // 显示主题标题
+                        option.title = theme.description || '';  // 可选：添加描述作为tooltip
+                        themeSelect.appendChild(option);
+                    });
+                    
+                    return true;
+                } else {
+                    throw new Error(result.error);
+                }
+            } catch (error) {
+                console.error('Failed to load themes:', error);
+                // 如果加载失败，使用fallback选项
+                const themeSelect = document.getElementById('theme');
+                themeSelect.innerHTML = '<option value="">选择主题 (数据加载失败)</option>';
+                return false;
+            }
+        }
+
         async function loadTagsFromAPI() {
             try {
                 const response = await fetch('/api/tags/all');
@@ -776,9 +815,165 @@
                 }
             } catch (error) {
                 console.error('Failed to load tags:', error);
-                alert('标签数据加载失败，请刷新页面重试');
+                // 不再弹出alert，而是使用fallback数据
+                initializeFallbackTagSelectors();
                 return false;
             }
+        }
+
+        // 初始化标签选择器
+        function initializeTagSelectors() {
+            if (!tagData.loaded) {
+                console.warn('Tag data not loaded, cannot initialize selectors');
+                return;
+            }
+
+            // 初始化风格标签
+            initializeStyleSelectors();
+            
+            // 初始化场合标签  
+            initializeSceneSelectors();
+            
+            // 初始化模特属性标签
+            initializeModelAttributeSelectors();
+            
+            // 初始化姿态标签
+            initializePoseTagSelector();
+            
+            // 启用按钮
+            document.getElementById('addStyleTagBtn').disabled = false;
+            document.getElementById('addSceneTagBtn').disabled = false;
+            document.getElementById('addOutfitBtn').disabled = false;
+        }
+
+        // 初始化风格标签选择器
+        function initializeStyleSelectors() {
+            const styleLevel1Select = document.querySelector('#styleTag0 select[name="style_level1"]');
+            if (styleLevel1Select && tagData.multi_level.style && tagData.multi_level.style.cascade.level1) {
+                styleLevel1Select.innerHTML = '<option value="">选择一级风格</option>';
+                tagData.multi_level.style.cascade.level1.forEach(tag => {
+                    const option = document.createElement('option');
+                    option.value = tag.value;
+                    option.textContent = tag.label;
+                    styleLevel1Select.appendChild(option);
+                });
+            }
+        }
+
+        // 初始化场合标签选择器
+        function initializeSceneSelectors() {
+            const sceneLevel1Select = document.querySelector('#sceneTag0 select[name="scene_level1"]');
+            if (sceneLevel1Select && tagData.multi_level.scene && tagData.multi_level.scene.cascade.level1) {
+                sceneLevel1Select.innerHTML = '<option value="">选择一级场合</option>';
+                tagData.multi_level.scene.cascade.level1.forEach(tag => {
+                    const option = document.createElement('option');
+                    option.value = tag.value;
+                    option.textContent = tag.label;
+                    sceneLevel1Select.appendChild(option);
+                });
+            }
+        }
+
+        // 初始化模特属性标签选择器
+        function initializeModelAttributeSelectors() {
+            const attributeSelectors = [
+                { name: 'age', selector: 'select[name="age"]' },
+                { name: 'gender', selector: 'select[name="gender"]' },
+                { name: 'race', selector: 'select[name="race"]' },
+                { name: 'size', selector: 'select[name="size"]' }
+            ];
+
+            attributeSelectors.forEach(({ name, selector }) => {
+                const selectElement = document.querySelector(selector);
+                if (selectElement && tagData.single_level[name] && tagData.single_level[name].list) {
+                    selectElement.innerHTML = `<option value="">选择${name === 'age' ? '年龄' : name === 'gender' ? '性别' : name === 'race' ? '种族' : '体型'}</option>`;
+                    tagData.single_level[name].list.forEach(tag => {
+                        const option = document.createElement('option');
+                        option.value = tag.id;
+                        option.textContent = tag.name_cn || tag.name;
+                        selectElement.appendChild(option);
+                    });
+                }
+            });
+        }
+
+        // 初始化姿态标签选择器
+        function initializePoseTagSelector() {
+            const poseTagSelect = document.getElementById('poseTag');
+            if (poseTagSelect && tagData.single_level.pose && tagData.single_level.pose.list) {
+                poseTagSelect.innerHTML = '<option value="">选择姿态标签</option>';
+                tagData.single_level.pose.list.forEach(tag => {
+                    const option = document.createElement('option');
+                    option.value = tag.id;
+                    option.textContent = tag.name_cn || tag.name;
+                    poseTagSelect.appendChild(option);
+                });
+            }
+        }
+
+        // Fallback初始化函数（当API加载失败时使用）
+        function initializeFallbackTagSelectors() {
+            // 使用硬编码的fallback数据
+            const fallbackData = {
+                style: ['写实', '艺术', '卡通'],
+                scene: ['日常', '工作', '聚会', '户外'],
+                age: ['Teenager (14-17)', 'Young Adult (18-20)', 'Middle Aged (31-60)','Senior (61-80)'],
+                gender: ['Male', 'Female'],
+                race: ['East Asian', 'South Asian', 'White', 'Black', 'Latino'],
+                size: ['Petite', 'Standard', 'Curve','Tall','Maternity']
+            };
+
+            // 风格标签fallback
+            const styleLevel1Select = document.querySelector('#styleTag0 select[name="style_level1"]');
+            if (styleLevel1Select) {
+                styleLevel1Select.innerHTML = '<option value="">选择一级风格</option>';
+                fallbackData.style.forEach((label, index) => {
+                    const option = document.createElement('option');
+                    option.value = `style_${index}`;
+                    option.textContent = label;
+                    styleLevel1Select.appendChild(option);
+                });
+            }
+
+            // 场合标签fallback
+            const sceneLevel1Select = document.querySelector('#sceneTag0 select[name="scene_level1"]');
+            if (sceneLevel1Select) {
+                sceneLevel1Select.innerHTML = '<option value="">选择一级场合</option>';
+                fallbackData.scene.forEach((label, index) => {
+                    const option = document.createElement('option');
+                    option.value = `scene_${index}`;
+                    option.textContent = label;
+                    sceneLevel1Select.appendChild(option);
+                });
+            }
+
+            // 模特属性fallback
+            ['age', 'gender', 'race', 'size'].forEach(attr => {
+                const select = document.querySelector(`select[name="${attr}"]`);
+                if (select && fallbackData[attr]) {
+                    const labels = { age: '年龄', gender: '性别', race: '种族', size: '体型' };
+                    select.innerHTML = `<option value="">选择${labels[attr]}</option>`;
+                    fallbackData[attr].forEach((label, index) => {
+                        const option = document.createElement('option');
+                        option.value = `${attr}_${index}`;
+                        option.textContent = label;
+                        select.appendChild(option);
+                    });
+                }
+            });
+
+            // 姿态标签fallback
+            const poseTagSelect = document.getElementById('poseTag');
+            if (poseTagSelect) {
+                poseTagSelect.innerHTML = '<option value="">选择姿态标签 (数据加载失败)</option>';
+            }
+
+            // 启用按钮
+            document.getElementById('addStyleTagBtn').disabled = false;
+            document.getElementById('addSceneTagBtn').disabled = false;
+            document.getElementById('addOutfitBtn').disabled = false;
+
+            console.warn('Using fallback tag data due to API failure');
         }
 
         // 初始化
@@ -786,17 +981,23 @@
             // 显示加载状态
             showLoadingState();
             
-            // 加载标签数据
-            const tagsLoaded = await loadTagsFromAPI();
+            // 并行加载主题和标签数据
+            const [themesLoaded, tagsLoaded] = await Promise.all([
+                loadThemesFromAPI(),
+                loadTagsFromAPI()
+            ]);
             
-            if (tagsLoaded) {
-                initializeEventListeners();
-                loadFromLocalStorage();
-                validateForm();
-                hideLoadingState();
-            } else {
-                // 处理加载失败
-                showErrorState();
+            // 无论加载是否成功都继续初始化
+            initializeEventListeners();
+            loadFromLocalStorage();
+            validateForm();
+            hideLoadingState();
+            
+            if (!themesLoaded) {
+                console.warn('Themes failed to load, using fallback');
+            }
+            if (!tagsLoaded) {
+                console.warn('Tags failed to load, using fallback');
             }
         });
 
@@ -888,8 +1089,11 @@
                         alert('图片必须是竖屏（高度大于宽度）');
                         return;
                     }
-                }
-            }
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+            
             // 显示上传状态
             const uploadArea = document.getElementById('mainUploadArea');
             const originalContent = uploadArea.innerHTML;
@@ -1072,6 +1276,36 @@
             container.appendChild(div);
         }
 
+        function updateImageDescriptionItem(type, imageData) {
+            const element = document.getElementById(imageData.id);
+            if (element) {
+                const content = element.querySelector('.image-description-content');
+                content.classList.remove('uploading');
+                
+                const deleteBtn = element.querySelector('.delete-image-btn');
+                if (deleteBtn) deleteBtn.style.display = 'flex';
+                
+                const spinner = element.querySelector('.upload-spinner');
+                if (spinner) spinner.remove();
+                
+                const textarea = element.querySelector('textarea');
+                if (textarea) textarea.disabled = false;
+                
+                const label = element.querySelector('label');
+                if (label) label.textContent = '图片描述 (选填)';
+                
+                // 添加上传完成提示
+                const container = element.querySelector('.description-input-container');
+                if (container && !container.querySelector('small')) {
+                    const successText = document.createElement('small');
+                    successText.style.color = '#28a745';
+                    successText.style.fontSize = '11px';
+                    successText.textContent = '✅ 上传完成';
+                    container.appendChild(successText);
+                }
+            }
+        }
+
         function deleteReferenceImage(type, imageId) {
             // 从数组中移除
             const index = referenceImages[type].findIndex(img => img.id === imageId);
@@ -1163,6 +1397,7 @@
                 level3Select.disabled = true;
             }
         }
+        
         function updateStyleLevel2(select) {
             const container = select.parentNode;
             const level2Select = container.querySelector('select[name="style_level2"]');
@@ -1172,8 +1407,15 @@
             tagWall.innerHTML = '';
             
             const selectedLevel1Id = select.value;
-            if (!selectedLevel1Id || !tagData.loaded) {
+            if (!selectedLevel1Id) {
                 level2Select.disabled = true;
+                return;
+            }
+            
+            // 如果没有加载真实数据，使用fallback逻辑
+            if (!tagData.loaded) {
+                level2Select.disabled = false;
+                level2Select.innerHTML = '<option value="">选择二级风格</option><option value="fallback_style2">通用风格</option>';
                 return;
             }
             
@@ -1203,8 +1445,23 @@
             const selectedLevel2Id = select.value;
             const selectedLevel1Id = level1Select.value;
             
-            if (!selectedLevel2Id || !tagData.loaded) return;
+            if (!selectedLevel2Id) return;
             
+            // 如果没有加载真实数据，使用fallback逻辑
+            if (!tagData.loaded) {
+                const fallbackTags = ['标签A', '标签B', '标签C'];
+                fallbackTags.forEach((label, index) => {
+                    const button = document.createElement('button');
+                    button.type = 'button';
+                    button.className = 'tag-item';
+                    button.textContent = label;
+                    button.dataset.tagId = `fallback_scene_${index}`;
+                    button.onclick = () => toggleTag(button);
+                    tagWall.appendChild(button);
+                });
+                return;
+            }
+
             // 获取第三级标签（叶子节点）
             const styleTagData = tagData.multi_level.style;
             if (styleTagData && styleTagData.cascade.level3_by_parent[selectedLevel2Id]) {
@@ -1229,13 +1486,20 @@
             tagWall.innerHTML = '';
             
             const selectedLevel1Id = select.value;
-            if (!selectedLevel1Id || !tagData.loaded) {
+            if (!selectedLevel1Id) {
                 level2Select.disabled = true;
                 return;
             }
             
+            // 如果没有加载真实数据，使用fallback逻辑
+            if (!tagData.loaded) {
+                level2Select.disabled = false;
+                level2Select.innerHTML = '<option value="">选择二级场合</option><option value="fallback_scene2">通用场合</option>';
+                return;
+            }
+            
             // 从真实标签数据获取子级标签
-            const sceneTagData = tagData.multi_level.style;
+            const sceneTagData = tagData.multi_level.scene;
             if (sceneTagData && sceneTagData.cascade.level2_by_parent[selectedLevel1Id]) {
                 level2Select.disabled = false;
                 
@@ -1260,7 +1524,7 @@
             const selectedLevel2Id = select.value;
             const selectedLevel1Id = level1Select.value;
             
-            if (!selectedLevel2Id || !tagData.loaded) return;
+            if (!selectedLevel2Id) return;
             
             // 获取第三级标签（叶子节点）
             const sceneTagData = tagData.multi_level.scene;
@@ -1276,6 +1540,7 @@
                 });
             }
         }
+    
 
         function toggleTag(button) {
             button.classList.toggle('selected');
@@ -1293,9 +1558,6 @@
                     <button type="button" class="remove-button" onclick="removeStyleTag(${styleTagCounter})" style="margin-bottom: 10px;">删除此项</button>
                     <select class="form-control" name="style_level1" style="margin-bottom: 10px;">
                         <option value="">选择一级风格</option>
-                        <option value="realistic">写实</option>
-                        <option value="artistic">艺术</option>
-                        <option value="cartoon">卡通</option>
                     </select>
                     <select class="form-control" name="style_level2" style="margin-bottom: 10px;" disabled>
                         <option value="">选择二级风格</option>
@@ -1304,6 +1566,27 @@
                 </div>
             `;
             container.appendChild(newTag);
+            
+            // 填充新添加的风格选择器
+            const newStyleLevel1 = newTag.querySelector('select[name="style_level1"]');
+            if (tagData.loaded && tagData.multi_level.style && tagData.multi_level.style.cascade.level1) {
+                tagData.multi_level.style.cascade.level1.forEach(tag => {
+                    const option = document.createElement('option');
+                    option.value = tag.value;
+                    option.textContent = tag.label;
+                    newStyleLevel1.appendChild(option);
+                });
+            } else {
+                // Fallback数据
+                const fallbackStyles = ['写实', '艺术', '卡通'];
+                fallbackStyles.forEach((label, index) => {
+                    const option = document.createElement('option');
+                    option.value = `style_${index}`;
+                    option.textContent = label;
+                    newStyleLevel1.appendChild(option);
+                });
+            }
+            
             styleTagCounter++;
         }
 
@@ -1326,10 +1609,6 @@
                     <button type="button" class="remove-button" onclick="removeSceneTag(${sceneTagCounter})" style="margin-bottom: 10px;">删除此项</button>
                     <select class="form-control" name="scene_level1" style="margin-bottom: 10px;">
                         <option value="">选择一级场合</option>
-                        <option value="daily">日常</option>
-                        <option value="work">工作</option>
-                        <option value="party">聚会</option>
-                        <option value="outdoor">户外</option>
                     </select>
                     <select class="form-control" name="scene_level2" style="margin-bottom: 10px;" disabled>
                         <option value="">选择二级场合</option>
@@ -1338,6 +1617,27 @@
                 </div>
             `;
             container.appendChild(newTag);
+            
+            // 填充新添加的场合选择器
+            const newSceneLevel1 = newTag.querySelector('select[name="scene_level1"]');
+            if (tagData.loaded && tagData.multi_level.scene && tagData.multi_level.scene.cascade.level1) {
+                tagData.multi_level.scene.cascade.level1.forEach(tag => {
+                    const option = document.createElement('option');
+                    option.value = tag.value;
+                    option.textContent = tag.label;
+                    newSceneLevel1.appendChild(option);
+                });
+            } else {
+                // Fallback数据
+                const fallbackScenes = ['日常', '工作', '聚会', '户外'];
+                fallbackScenes.forEach((label, index) => {
+                    const option = document.createElement('option');
+                    option.value = `scene_${index}`;
+                    option.textContent = label;
+                    newSceneLevel1.appendChild(option);
+                });
+            }
+            
             sceneTagCounter++;
         }
 
@@ -1351,11 +1651,6 @@
         }
 
         function addOutfitDetail() {
-            if (!tagData.loaded) {
-                alert('标签数据尚未加载完成，请稍后再试');
-                return;
-            }
-
             const container = document.getElementById('outfitDetailsContainer');
             const newOutfit = document.createElement('div');
             newOutfit.className = 'outfit-item';
@@ -1401,7 +1696,7 @@
             
             container.appendChild(newOutfit);
             
-            // 填充真实数据
+            // 填充真实数据或fallback数据
             populateOutfitSelectors(newOutfit);
             
             outfitCounter++;
@@ -1410,48 +1705,82 @@
         }
 
         function populateOutfitSelectors(outfitElement) {
-            if (!tagData.loaded) return;
-
             // 填充产品类型（多级标签）
             const productTypeLevel1 = outfitElement.querySelector('select[name="product_type_level1"]');
-            if (tagData.multi_level.product_type && tagData.multi_level.product_type.cascade.level1) {
+            if (tagData.loaded && tagData.multi_level.product_type && tagData.multi_level.product_type.cascade.level1) {
                 tagData.multi_level.product_type.cascade.level1.forEach(tag => {
                     const option = document.createElement('option');
                     option.value = tag.value;  // 真实标签ID
                     option.textContent = tag.label;  // 中文显示名
                     productTypeLevel1.appendChild(option);
                 });
+            } else {
+                // Fallback数据
+                const fallbackProductTypes = ['上装', '下装', '鞋类', '配件'];
+                fallbackProductTypes.forEach((label, index) => {
+                    const option = document.createElement('option');
+                    option.value = `product_${index}`;
+                    option.textContent = label;
+                    productTypeLevel1.appendChild(option);
+                });
             }
 
             // 填充面料标签（单级标签）
             const fabricSelect = outfitElement.querySelector('select[name="fabric_tag_ids"]');
-            if (tagData.single_level.fabric && tagData.single_level.fabric.list) {
+            if (tagData.loaded && tagData.single_level.fabric && tagData.single_level.fabric.list) {
                 tagData.single_level.fabric.list.forEach(tag => {
                     const option = document.createElement('option');
                     option.value = tag.id;
                     option.textContent = tag.name_cn || tag.name;
                     fabricSelect.appendChild(option);
                 });
+            } else {
+                // Fallback数据
+                const fallbackFabrics = ['棉', '丝绸', '毛料', '聚酯纤维'];
+                fallbackFabrics.forEach((label, index) => {
+                    const option = document.createElement('option');
+                    option.value = `fabric_${index}`;
+                    option.textContent = label;
+                    fabricSelect.appendChild(option);
+                });
             }
 
             // 填充廓形标签（多级标签）
             const silhouetteSelect = outfitElement.querySelector('select[name="silhouette_tag_ids"]');
-            if (tagData.multi_level.silhouette && tagData.multi_level.silhouette.cascade.level1) {
+            if (tagData.loaded && tagData.multi_level.silhouette && tagData.multi_level.silhouette.cascade.level1) {
                 tagData.multi_level.silhouette.cascade.level1.forEach(tag => {
                     const option = document.createElement('option');
                     option.value = tag.value;
                     option.textContent = tag.label;
                     silhouetteSelect.appendChild(option);
                 });
+            } else {
+                // Fallback数据
+                const fallbackSilhouettes = ['修身', '宽松', '直筒', '紧身'];
+                fallbackSilhouettes.forEach((label, index) => {
+                    const option = document.createElement('option');
+                    option.value = `silhouette_${index}`;
+                    option.textContent = label;
+                    silhouetteSelect.appendChild(option);
+                });
             }
 
-            // 填充品牌标签（单级标签）
+            // 填充颜色标签（单级标签）
             const colorSelect = outfitElement.querySelector('select[name="color_tag_ids"]');
-            if (tagData.single_level.color && tagData.single_level.color.list) {
+            if (tagData.loaded && tagData.single_level.color && tagData.single_level.color.list) {
                 tagData.single_level.color.list.forEach(tag => {
                     const option = document.createElement('option');
                     option.value = tag.id;
                     option.textContent = tag.name_cn || tag.name;
+                    colorSelect.appendChild(option);
+                });
+            } else {
+                // Fallback数据
+                const fallbackColors = ['黑色', '白色', '红色', '蓝色', '灰色'];
+                fallbackColors.forEach((label, index) => {
+                    const option = document.createElement('option');
+                    option.value = `color_${index}`;
+                    option.textContent = label;
                     colorSelect.appendChild(option);
                 });
             }
@@ -1467,32 +1796,13 @@
         }
 
         function showLoadingState() {
-            const rightPanel = document.querySelector('.right-panel');
-            rightPanel.innerHTML = `
-                <div style="text-align: center; padding: 50px;">
-                    <div style="font-size: 18px; color: #666;">
-                        🔄 正在加载标签数据...
-                    </div>
-                </div>
-            `;
+            document.getElementById('loadingState').style.display = 'block';
+            document.getElementById('mainContent').style.display = 'none';
         }
 
         function hideLoadingState() {
-            // 恢复原始内容或重新渲染表单
-        }
-
-        function showErrorState() {
-            const rightPanel = document.querySelector('.right-panel');
-            rightPanel.innerHTML = `
-                <div style="text-align: center; padding: 50px;">
-                    <div style="font-size: 18px; color: #dc3545; margin-bottom: 20px;">
-                        ❌ 标签数据加载失败
-                    </div>
-                    <button onclick="location.reload()" class="submit-button" style="width: auto;">
-                        重新加载
-                    </button>
-                </div>
-            `;
+            document.getElementById('loadingState').style.display = 'none';
+            document.getElementById('mainContent').style.display = 'block';
         }
 
         function validateFormForSubmit() {
@@ -1685,7 +1995,6 @@
                 isValid = false;
             }
         }
-        
 
         function saveToLocalStorage() {
             const formData = {
@@ -1709,7 +2018,8 @@
             const selectedTags = document.querySelectorAll('.tag-item.selected');
             formData.selectedTags = Array.from(selectedTags).map(tag => ({
                 parent: tag.parentNode.id,
-                text: tag.textContent
+                text: tag.textContent,
+                tagId: tag.dataset.tagId
             }));
 
             localStorage.setItem('imageAnnotationData', JSON.stringify(formData));
@@ -1769,7 +2079,7 @@
                             const parent = document.getElementById(tagData.parent);
                             if (parent) {
                                 const tag = Array.from(parent.querySelectorAll('.tag-item'))
-                                    .find(t => t.textContent === tagData.text);
+                                    .find(t => t.textContent === tagData.text || t.dataset.tagId === tagData.tagId);
                                 if (tag) {
                                     tag.classList.add('selected');
                                 }
@@ -1864,8 +2174,12 @@
             const tagIds = [];
             document.querySelectorAll(`${containerSelector} .tag-selection`).forEach(selection => {
                 const selectedTags = Array.from(selection.querySelectorAll('.tag-item.selected'))
-                    .map(tag => parseInt(tag.dataset.tagId))
-                    .filter(id => !isNaN(id));
+                    .map(tag => {
+                        const tagId = tag.dataset.tagId;
+                        // 处理数字ID和fallback ID
+                        return isNaN(tagId) ? tagId : parseInt(tagId);
+                    })
+                    .filter(id => id !== undefined && id !== null);
                 tagIds.push(...selectedTags);
             });
             return [...new Set(tagIds)]; // 去重
@@ -1884,7 +2198,9 @@
             attributeSelectors.forEach(selector => {
                 const element = document.querySelector(selector);
                 if (element && element.value) {
-                    attributes.push(parseInt(element.value));
+                    const value = element.value;
+                    // 处理数字ID和fallback ID
+                    attributes.push(isNaN(value) ? value : parseInt(value));
                 }
             });
             
@@ -1919,13 +2235,16 @@
                 const outfit = {};
                 
                 // 产品类型标签（多级）
-                const productType = {
-                    level1: parseInt(item.querySelector('select[name="product_type_level1"]').value) || null,
-                    level2: parseInt(item.querySelector('select[name="product_type_level2"]').value) || null,
-                    level3: parseInt(item.querySelector('select[name="product_type_level3"]').value) || null
-                };
+                const level1Value = item.querySelector('select[name="product_type_level1"]').value;
+                const level2Value = item.querySelector('select[name="product_type_level2"]').value;
+                const level3Value = item.querySelector('select[name="product_type_level3"]').value;
                 
-                if (productType.level1) {
+                if (level1Value) {
+                    const productType = {
+                        level1: isNaN(level1Value) ? level1Value : parseInt(level1Value),
+                        level2: level2Value ? (isNaN(level2Value) ? level2Value : parseInt(level2Value)) : null,
+                        level3: level3Value ? (isNaN(level3Value) ? level3Value : parseInt(level3Value)) : null
+                    };
                     outfit.product_type_tag_ids = productType;
                 }
                 
@@ -1939,7 +2258,8 @@
                 singleTags.forEach(tag => {
                     const element = item.querySelector(tag.selector);
                     if (element && element.value) {
-                        outfit[tag.name] = parseInt(element.value);
+                        const value = element.value;
+                        outfit[tag.name] = isNaN(value) ? value : parseInt(value);
                     }
                 });
                 
@@ -1951,7 +2271,6 @@
             
             return outfitDetails;
         }
-
 
         async function handleSubmit(e) {
             e.preventDefault();
@@ -2139,10 +2458,9 @@
             `;
             
             // 重新填充标签数据
-            if (tagData.loaded) {
-                initializeTagSelectors();
-            }
+            initializeTagSelectors();
         }
+
         function showSuccessMessage(responseData) {
             // 创建成功提示模态框
             const modal = document.createElement('div');
@@ -2165,7 +2483,7 @@
                     <h3 style="color: #28a745; margin-bottom: 15px;">提交成功！</h3>
                     <p style="color: #666; margin-bottom: 20px;">
                         标注数据已成功保存<br>
-                        记录ID: ${responseData.unique_id}
+                        记录ID: ${responseData.unique_id || '未知'}
                     </p>
                     <button onclick="this.closest('div').parentNode.remove()" 
                             style="background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer;">
@@ -2216,10 +2534,6 @@
             
             document.body.appendChild(modal);
         }
-            
-        // 表单输入监听 - 移除validateForm调用，因为按钮现在始终可点击
-        document.addEventListener('input', saveToLocalStorage);
-        document.addEventListener('change', saveToLocalStorage);
     </script>
 </body>
 </html>
