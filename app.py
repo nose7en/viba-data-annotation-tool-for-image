@@ -132,7 +132,7 @@ TAG_TYPES = {
     'single_level': [
         'season', 'pose', 'model_race', 'composition_angle',
         'composition_shot', 'model_attribute', 'model_age', 
-        'gender', 'fabric', 'brand', 'composition_position',
+        'gender', 'fabric', 'color', 'composition_position',
         'model_size', 'composition_bodyratio', 'model_gender'
     ]
 }
