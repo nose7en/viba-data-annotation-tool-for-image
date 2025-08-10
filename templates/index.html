@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VIBA 参考图标注工具</title>
+    <title>VIBA 参考图片标注工具</title>
     <style>
         * {
             margin: 0;
@@ -15,30 +15,6 @@
             font-family: 'Microsoft YaHei', Arial, sans-serif;
             background-color: #f5f5f5;
             color: #333;
-        }
-
-        .loading-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.5);
-            display: none;
-            justify-content: center;
-            align-items: center;
-            z-index: 9999;
-        }
-
-        .loading-overlay.active {
-            display: flex;
-        }
-
-        .loading-spinner {
-            background: white;
-            padding: 30px;
-            border-radius: 8px;
-            text-align: center;
         }
 
         .container {
@@ -56,9 +32,8 @@
             box-shadow: 0 2px 10px rgba(0,0,0,0.1);
             position: sticky;
             top: 20px;
-            height: fit-content;
-            max-height: calc(100vh - 40px);
-            overflow: hidden;
+            height: calc(100vh - 40px);
+            overflow-y: auto;
         }
 
         .right-panel {
@@ -98,7 +73,8 @@
         }
 
         .form-group {
-            margin-bottom: 20px;
+            margin-top: 30px;
+            margin-bottom: 30px;
         }
 
         .form-group label {
@@ -143,7 +119,8 @@
             background: #f8f9fa;
             padding: 20px;
             border-radius: 8px;
-            margin-top: 15px;
+            margin-top: 5px;
+            margin-bottom: 15px;
         }
 
         .reference-upload-grid {
@@ -183,11 +160,6 @@
             flex-wrap: wrap;
             gap: 8px;
             margin-top: 10px;
-            max-height: 200px;
-            overflow-y: auto;
-            padding: 10px;
-            border: 1px solid #e9ecef;
-            border-radius: 4px;
         }
 
         .tag-item {
@@ -197,7 +169,6 @@
             border-radius: 20px;
             cursor: pointer;
             transition: all 0.3s;
-            font-size: 13px;
         }
 
         .tag-item:hover {
@@ -216,7 +187,7 @@
             padding: 8px 16px;
             border-radius: 4px;
             cursor: pointer;
-            margin-top: 10px;
+            margin-bottom: 10px;
         }
 
         .add-button:hover {
@@ -262,14 +233,28 @@
             border: 2px solid #ddd;
         }
 
+        .big-note {
+            background: rgb(222, 242, 250);
+            border: 1px solid #a5cafd;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+            margin-top:5px;
+            color: #181518;
+        }
+
         .note {
             background: #fff3cd;
             border: 1px solid #ffeaa7;
             padding: 10px;
             border-radius: 4px;
             margin-bottom: 15px;
+            margin-top:5px;
             color: #856404;
-            font-size: 12px;
+        }
+
+        .note-inside {
+            margin-top:3px
         }
 
         .section-title {
@@ -277,6 +262,15 @@
             border-bottom: 2px solid #007bff;
             padding-bottom: 5px;
             margin-bottom: 20px;
+        }
+
+        .big-section-title {
+            color: #000000;
+            border-bottom: 2px solid #78838f63;
+            padding-bottom: 5px;
+            margin-bottom: 20px;
+            margin-top:20px;
+            font-size: large;
         }
 
         .outfit-item {
@@ -297,92 +291,175 @@
             float: right;
         }
 
+        /* 新增样式 - 图片上传组合框 */
+        .image-description-item {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            background: #fafafa;
+            position: relative;
+        }
+
+        .image-description-content {
+            display: grid;
+            grid-template-columns: 150px 1fr;
+            gap: 15px;
+            align-items: start;
+        }
+
+        .image-preview-container {
+            position: relative;
+            width: 150px;
+            height: 100px;
+            border: 2px dashed #ddd;
+            border-radius: 8px;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .image-preview-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .image-preview-container .placeholder {
+            color: #666;
+            font-size: 12px;
+            text-align: center;
+        }
+
+        .delete-image-btn {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: rgba(220, 53, 69, 0.8);
+            color: white;
+            border: none;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 12px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .image-preview-container:hover .delete-image-btn {
+            display: flex;
+        }
+
+        .description-input-container {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        /* 错误信息样式 */
         .error-message {
             color: #dc3545;
             font-size: 12px;
             margin-top: 5px;
+            display: none;
         }
 
-        .success-message {
-            background: #d4edda;
-            border: 1px solid #c3e6cb;
-            color: #155724;
+        .error-message.show {
+            display: block;
+        }
+
+        .form-group.has-error .form-control,
+        .form-group.has-error .upload-area {
+            border-color: #dc3545;
+        }
+
+        .image-description-item.uploading {
+            opacity: 0.7;
+            pointer-events: none;
+        }
+
+        .upload-spinner {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 20px;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from { transform: translate(-50%, -50%) rotate(0deg); }
+            to { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+
+        .batch-upload-progress {
+            background: #e3f2fd;
+            border: 1px solid #90caf9;
             padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background-color: #f0f0f0;
             border-radius: 4px;
-            margin-bottom: 20px;
+            overflow: hidden;
+            margin-top: 10px;
         }
 
-        .cascade-selects {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 10px;
-        }
-
-        .cascade-selects select {
-            flex: 1;
-        }
-
-        @media (max-width: 768px) {
-            .container {
-                flex-direction: column;
-            }
-            
-            .reference-upload-grid {
-                grid-template-columns: 1fr;
-            }
+        .progress-fill {
+            height: 100%;
+            background-color: #007bff;
+            transition: width 0.3s ease;
         }
     </style>
 </head>
 <body>
-    <!-- Loading Overlay -->
-    <div class="loading-overlay" id="loadingOverlay">
-        <div class="loading-spinner">
-            <div>处理中...</div>
-            <div style="margin-top: 10px;">请稍候</div>
-        </div>
-    </div>
-
     <div class="container">
         <!-- 左侧面板 -->
         <div class="left-panel">
             <h2>图片上传</h2>
+            <div class="note">宽不得少于1080px，宽长比建议为9:16（1080*1920），需至少2:3（1080*1620）</div>
             <div class="upload-area" id="mainUploadArea">
                 <div>
                     <p>拖拽图片到这里或点击上传</p>
                     <p style="color: #666; font-size: 12px;">
                         支持格式：PNG, JPG<br>
                         <strong>竖屏要求：高度必须大于宽度</strong><br>
-                        最小分辨率：1080×1920<br>
+                        最小分辨率：1080×1620<br>
                         最大分辨率：2160×3840
                     </p>
                 </div>
                 <input type="file" id="mainImageInput" accept="image/png,image/jpeg" style="display: none;">
             </div>
             <div id="mainImagePreview"></div>
-            
-            <h3 style="margin-top: 20px;">已上传图片预览</h3>
-            <div id="allImagesPreview" class="image-preview-grid"></div>
         </div>
 
         <!-- 右侧面板 -->
         <div class="right-panel">
             <h2>标注信息</h2>
-            
-            <div id="successMessage" class="success-message" style="display: none;"></div>
-            
+            <div class="big-note">🥹输入部分全部用英文，拜托仔细检查填写～</div>
             <form id="annotationForm">
                 <!-- 图片主题 -->
                 <div class="form-group">
-                    <label for="theme">图片所属主题 (选填)</label>
-                    <select class="form-control" id="theme" name="theme_ids" multiple>
-                        <option value="">加载主题中...</option>
+                    <label class="big-section-title" for="theme">图片所属主题</label>
+                    <select class="form-control" id="theme" name="theme">
+                        <option value="">请选择主题</option>
+                        <option value="fashion">时尚</option>
+                        <option value="lifestyle">生活方式</option>
+                        <option value="product">产品</option>
+                        <option value="portrait">人像</option>
                     </select>
-                    <div class="note">按住Ctrl/Cmd可多选</div>
                 </div>
 
                 <!-- 图片类型 -->
                 <div class="form-group">
-                    <label>图片类型 <span class="required">*</span></label>
+                    <label class="big-section-title">图片类型 <span class="required">*</span></label>
                     <div class="radio-group">
                         <div class="radio-item">
                             <input type="radio" id="generated" name="reference_type" value="1" required>
@@ -400,65 +477,48 @@
                     <h3 class="section-title">生成图信息</h3>
                     
                     <div class="form-group">
-                        <label for="gen_content_prompt">生成时所用的提示词 <span class="required">*</span></label>
-                        <textarea class="form-control" id="gen_content_prompt" name="gen_content_prompt" rows="3" placeholder="请输入生成图片时使用的提示词"></textarea>
+                        <label for="contentPrompt">生成时所用的提示词 <span class="required">*</span></label>
+                        <textarea class="form-control" id="contentPrompt" name="content_prompt" rows="3" placeholder="请输入生成图片时使用的提示词"></textarea>
                     </div>
 
                     <div class="form-group">
-                        <label for="gen_ml_model_source">使用模型 <span class="required">*</span></label>
-                        <input type="text" class="form-control" id="gen_ml_model_source" name="gen_ml_model_source" placeholder="请输入模型名称或URL">
+                        <label for="mlModel">使用模型 <span class="required">*</span></label>
+                        <input type="text" class="form-control" id="mlModel" name="ml_model_source" placeholder="请输入模型名称或URL">
                     </div>
 
-                    <div class="reference-upload-grid">
-                        <!-- 姿态参考 -->
-                        <div class="reference-item">
-                            <h4>姿态参考</h4>
-                            <div class="reference-upload" data-type="prompt_pose">
-                                <p>上传姿态参考图</p>
-                                <div class="uploaded-count" id="poseCount">已上传: 0张</div>
-                            </div>
-                            <textarea class="form-control" id="gen_pose_description" placeholder="姿态描述 (选填)" rows="2" style="margin-top: 10px;"></textarea>
-                        </div>
+                    <!-- 姿态参考 -->
+                    <div class="form-group">
+                        <label>姿态参考</label>
+                        <button type="button" class="add-button" onclick="addReferenceImage('pose')">+ 添加姿态参考图</button>
+                        <div id="poseImagesContainer"></div>
+                    </div>
 
-                        <!-- 商品参考 -->
-                        <div class="reference-item">
-                            <h4>商品参考</h4>
-                            <div class="reference-upload" data-type="prompt_outfit">
-                                <p>上传商品参考图</p>
-                                <div class="uploaded-count" id="outfitCount">已上传: 0张</div>
-                            </div>
-                            <textarea class="form-control" id="gen_outfit_description" placeholder="商品描述 (选填)" rows="2" style="margin-top: 10px;"></textarea>
-                        </div>
+                    <!-- 商品参考 -->
+                    <div class="form-group">
+                        <label>商品参考</label>
+                        <button type="button" class="add-button" onclick="addReferenceImage('outfit')">+ 添加商品参考图</button>
+                        <div id="outfitImagesContainer"></div>
+                    </div>
 
-                        <!-- 场景参考 -->
-                        <div class="reference-item">
-                            <h4>场景参考</h4>
-                            <div class="reference-upload" data-type="prompt_scene">
-                                <p>上传场景参考图</p>
-                                <div class="uploaded-count" id="sceneCount">已上传: 0张</div>
-                            </div>
-                            <textarea class="form-control" id="gen_scene_description" placeholder="场景描述 (选填)" rows="2" style="margin-top: 10px;"></textarea>
-                        </div>
+                    <!-- 场景参考 -->
+                    <div class="form-group">
+                        <label>场景参考</label>
+                        <button type="button" class="add-button" onclick="addReferenceImage('scene')">+ 添加场景参考图</button>
+                        <div id="sceneImagesContainer"></div>
+                    </div>
 
-                        <!-- 构图参考 -->
-                        <div class="reference-item">
-                            <h4>构图参考</h4>
-                            <div class="reference-upload" data-type="prompt_composition">
-                                <p>上传构图参考图</p>
-                                <div class="uploaded-count" id="compositionCount">已上传: 0张</div>
-                            </div>
-                            <textarea class="form-control" id="gen_composition_description" placeholder="构图描述 (选填)" rows="2" style="margin-top: 10px;"></textarea>
-                        </div>
+                    <!-- 构图参考 -->
+                    <div class="form-group">
+                        <label>构图参考</label>
+                        <button type="button" class="add-button" onclick="addReferenceImage('composition')">+ 添加构图参考图</button>
+                        <div id="compositionImagesContainer"></div>
+                    </div>
 
-                        <!-- 风格参考 -->
-                        <div class="reference-item">
-                            <h4>风格参考</h4>
-                            <div class="reference-upload" data-type="prompt_style">
-                                <p>上传风格参考图</p>
-                                <div class="uploaded-count" id="styleCount">已上传: 0张</div>
-                            </div>
-                            <textarea class="form-control" id="gen_style_description" placeholder="风格描述 (选填)" rows="2" style="margin-top: 10px;"></textarea>
-                        </div>
+                    <!-- 风格参考 -->
+                    <div class="form-group">
+                        <label>风格参考</label>
+                        <button type="button" class="add-button" onclick="addReferenceImage('style')">+ 添加风格参考图</button>
+                        <div id="styleImagesContainer"></div>
                     </div>
                 </div>
 
@@ -467,18 +527,13 @@
                     <h3 class="section-title">匹配图信息</h3>
                     
                     <div class="form-group">
-                        <label for="product_item_ids">商品ID (选填，多个用逗号分隔)</label>
-                        <input type="text" class="form-control" id="product_item_ids" name="product_item_ids" placeholder="例如: SKU001,SKU002">
+                        <label for="productIds">商品ID</label>
+                        <input type="text" class="form-control" id="productIds" name="product_item_ids" placeholder="请输入商品ID">
                     </div>
 
                     <div class="form-group">
-                        <label for="pose_description">姿势描述 (选填)</label>
-                        <textarea class="form-control" id="pose_description" name="pose_description" rows="3" placeholder="请描述图片中人物的姿势"></textarea>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="scene_description">场景描述 (选填)</label>
-                        <textarea class="form-control" id="scene_description" name="scene_description" rows="3" placeholder="请描述图片的场景"></textarea>
+                        <label for="poseDescription">姿势描述</label>
+                        <textarea class="form-control" id="poseDescription" name="pose_description" rows="3" placeholder="请描述图片中人物的姿势"></textarea>
                     </div>
 
                     <div class="form-group">
@@ -493,651 +548,258 @@
                                 <label for="faceNo">否</label>
                             </div>
                         </div>
+                        <div class="note">判断标准：能否展示和链接到对应的商品</div>
                     </div>
                 </div>
 
                 <!-- 风格标签 -->
                 <div class="form-group">
-                    <label>风格标签 <span class="required">*</span></label>
-                    <div class="note">注意：这是指整体图片的艺术风格，不是衣服的风格</div>
-                    <div id="styleTagsContainer"></div>
+                    <label class="big-section-title">风格标签 <span class="required">*</span></label>
+                    <div class="note">注意，这里指的是图片整体的艺术风格，而不是衣服的风格</div>
+                    <div id="styleTagsContainer">
+                        <div class="tag-selection" id="styleTag0">
+                            <select class="form-control" name="style_level1" style="margin-bottom: 10px;">
+                                <option value="">选择一级风格</option>
+                                <option value="realistic">写实</option>
+                                <option value="artistic">艺术</option>
+                                <option value="cartoon">卡通</option>
+                            </select>
+                            <select class="form-control" name="style_level2" style="margin-bottom: 10px;" disabled>
+                                <option value="">选择二级风格</option>
+                            </select>
+                            <div class="tag-wall" id="styleTagWall0"></div>
+                        </div>
+                    </div>
+                    <button type="button" class="add-button" onclick="addStyleTag()">+ 添加风格标签</button>
                 </div>
 
                 <!-- 场合标签 -->
                 <div class="form-group">
-                    <label>场合标签 <span class="required">*</span></label>
-                    <div id="occasionTagsContainer"></div>
+                    <label class="big-section-title">场合标签 <span class="required">*</span></label>
+                    <div id="sceneTagsContainer">
+                        <div class="tag-selection" id="sceneTag0">
+                            <select class="form-control" name="scene_level1" style="margin-bottom: 10px;">
+                                <option value="">选择一级场合</option>
+                                <option value="daily">日常</option>
+                                <option value="work">工作</option>
+                                <option value="party">聚会</option>
+                                <option value="outdoor">户外</option>
+                            </select>
+                            <select class="form-control" name="scene_level2" style="margin-bottom: 10px;" disabled>
+                                <option value="">选择二级场合</option>
+                            </select>
+                            <div class="tag-wall" id="sceneTagWall0"></div>
+                        </div>
+                    </div>
+                    <button type="button" class="add-button" onclick="addSceneTag()">+ 添加场合标签</button>
                 </div>
 
                 <!-- 模特数据标签 -->
                 <div class="form-group">
-                    <label>模特数据标签 <span class="required">*</span></label>
-                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-top: 10px;">
+                    <label class="big-section-title">模特数据标签 <span class="required">*</span></label>
+                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-top: 10px;">
                         <div>
                             <label>年龄</label>
-                            <select class="form-control" id="model_age" name="model_age" required>
+                            <select class="form-control" name="age" required>
                                 <option value="">选择年龄</option>
-                            </select>
+                                <option value="teenager">Teenager(14-17)</option>
+                                <option value="young_adult">Young adult (18-30)</option>
+                                <option value="middle_aged">Middle Aged (31-60)</option>
+                                <option value="senior_adult">Senior Adult (61-80)</option>
+                             </select>
                         </div>
                         <div>
                             <label>性别</label>
-                            <select class="form-control" id="model_gender" name="model_gender" required>
+                            <select class="form-control" name="gender" required>
                                 <option value="">选择性别</option>
+                                <option value="male">Male</option>
+                                <option value="female">Female</option>
                             </select>
                         </div>
                         <div>
                             <label>种族</label>
-                            <select class="form-control" id="model_race" name="model_race" required>
+                            <select class="form-control" name="race" required>
                                 <option value="">选择种族</option>
+                                <option value="east_asian">东亚人</option>
+                                <option value="south_asian">南亚人</option>
+                                <option value="white">白人</option>
+                                <option value="black">非洲人</option>
+                                <option value="latino">拉丁裔</option>
                             </select>
                         </div>
                         <div>
                             <label>体型</label>
-                            <select class="form-control" id="model_size" name="model_size" required>
+                            <select class="form-control" name="size" required>
                                 <option value="">选择体型</option>
+                                <option value="petite">Petite</option>
+                                <option value="standard">Standard</option>
+                                <option value="curve">Curve</option>
+                                <option value="tall">Tall</option>
+                                <option value="maternity">Maternity</option>
                             </select>
                         </div>
+                    </div>
+                    <div class="note">
+                            <p><a style="font-weight: bold">💃Notes:</a></p>
+                            <p class = "note-inside"><a style="font-weight: bold">Petite:</a> Heights under 5'4" (163cm), with proportions scaled for a smaller frame.</p>
+                            <p class = "note-inside"><a style="font-weight: bold">Standard:</a> Industry's standard size range (e.g., US 0-12).</p>
+                            <p class = "note-inside"><a style="font-weight: bold">Curve:</a> "Plus Size". For fuller-figured body types (e.g., US 14+).</p>
+                            <p class = "note-inside"><a style="font-weight: bold">Tall:</a> Heights over 5'9" (175cm), with longer limb and torso proportions.</p>
+                            <p class = "note-inside"><a style="font-weight: bold">Maternity:</a> Specifically designed to accommodate a pregnant figure, with features like an expanding belly.</p>
                     </div>
                 </div>
 
                 <!-- 姿态标签 -->
                 <div class="form-group">
-                    <label for="pose_tags">姿态标签 (选填)</label>
-                    <select class="form-control" id="pose_tags" name="pose_tag_ids" multiple>
-                        <option value="">加载中...</option>
+                    <label class="big-section-title" for="poseTag">姿态标签 (选填)</label>
+                    <select class="form-control" id="poseTag" name="pose_tag_ids">
+                        <option value="">选择姿态</option>
+                        <option value="standing">站立</option>
+                        <option value="sitting">坐着</option>
+                        <option value="walking_forward">行走</option>
+                        <option value="lying_down">躺着</option>
+                        <option value="crouching">蹲着</option>
+                        <option value="kneeling">跪着</option>
+                        <option value="running">奔跑</option>
+                        <option value="dancing">舞蹈</option>
                     </select>
-                    <div class="note">按住Ctrl/Cmd可多选</div>
+                </div>
+
+                <!-- 构图标注 -->
+                <div class="form-group">
+                    <label class="big-section-title">构图标注 (选填)</label>
+                    <div class="note">📸<a style="font-weight: bold;">Note:</a> 角度如果比较普通、是“平视“类型就不用填写～重点在于打上图片特点标签</div>
+                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-top: 10px;">
+                        <div>
+                            <label>镜头类型</label>
+                            <select class="form-control" name="camera_type">
+                                <option value="">选择镜头类型</option>
+                                <option value="close_up">特写</option>
+                                <option value="medium_shot">中景</option>
+                                <option value="long_shot">远景</option>
+                                <option value="extreme_wide_shot">大远景</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label>镜头角度</label>
+                            <select class="form-control" name="camera_angle">
+                                <option value="">选择镜头角度</option>
+                                <option value="high_angle">俯角</option>
+                                <option value="low_angle">仰角</option>
+                                <option value="wide_angle">广角</option>
+                                <option value="fisheye">鱼眼</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label>人身比例</label>
+                            <select class="form-control" name="body_ratio">
+                                <option value="">选择人身比例</option>
+                                <option value="head_shot">头部特写</option>
+                                <option value="head_shoulders">头肩比例</option>
+                                <option value="bust_shot">半身像</option>
+                                <option value="three_quarter">四分之三身</option>
+                                <option value="full_body">全身像</option>
+                                <option value="multiple_people">多人构图</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label>人物位置</label>
+                            <select class="form-control" name="character_position">
+                                <option value="">选择人物位置</option>
+                                <option value="center">居中</option>
+                                <option value="left">左侧</option>
+                                <option value="right">右侧</option>
+                                <option value="top">偏上</option>
+                                <option value="bottom">偏下</option>
+                            </select>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- 服装标注 -->
                 <div class="form-group">
-                    <label>服装标注 <span class="required">*</span></label>
+                    <label class="big-section-title">服装标注</label>
                     <div id="outfitDetailsContainer">
-                        <!-- 动态生成 -->
                     </div>
                     <button type="button" class="add-button" onclick="addOutfitDetail()">+ 添加服装标注</button>
                 </div>
 
-                <button type="submit" class="submit-button" id="submitButton" disabled>提交标注</button>
+                <button type="submit" class="submit-button" id="submitButton">提交标注</button>
             </form>
         </div>
     </div>
 
     <script>
-        // API配置
-        const API_BASE_URL = '/api';
-        
         // 全局变量
         let mainImage = null;
         let referenceImages = {
-            prompt_pose: [],
-            prompt_outfit: [],
-            prompt_scene: [],
-            prompt_composition: [],
-            prompt_style: []
+            pose: [],
+            outfit: [],
+            scene: [],
+            composition: [],
+            style: []
         };
-        let tagData = null;
-        let themes = [];
-        let outfitCounter = 0;
+        let outfitCounter = 1;
+        let styleTagCounter = 1;
+        let sceneTagCounter = 1;
+        let referenceImageCounters = {
+            pose: 0,
+            outfit: 0,
+            scene: 0,
+            composition: 0,
+            style: 0
+        };
+
+        // 获取真实数据
+        let tagData = {
+            multi_level: {},    // 多级标签（风格、场合等）
+            single_level: {},   // 单级标签（年龄、性别等）
+            loaded: false
+        };
+
+        async function loadTagsFromAPI() {
+            try {
+                const response = await fetch('/api/tags/all');
+                const result = await response.json();
+                
+                if (result.success) {
+                    tagData = {
+                        ...result.data,
+                        loaded: true
+                    };
+            
+                    // 初始化标签选择器
+                    initializeTagSelectors();
+                    return true;
+                } else {
+                    throw new Error(result.error);
+                }
+            } catch (error) {
+                console.error('Failed to load tags:', error);
+                alert('标签数据加载失败，请刷新页面重试');
+                return false;
+            }
+        }
 
         // 初始化
         document.addEventListener('DOMContentLoaded', async function() {
-            showLoading();
-            try {
-                await loadAllData();
+            // 显示加载状态
+            showLoadingState();
+            
+            // 加载标签数据
+            const tagsLoaded = await loadTagsFromAPI();
+            
+            if (tagsLoaded) {
                 initializeEventListeners();
-                addOutfitDetail(); // 添加默认的第一个服装项
-            } catch (error) {
-                console.error('Initialization error:', error);
-                alert('初始化失败，请刷新页面重试');
-            } finally {
-                hideLoading();
+                loadFromLocalStorage();
+                validateForm();
+                hideLoadingState();
+            } else {
+                // 处理加载失败
+                showErrorState();
             }
         });
 
-        // 显示/隐藏加载动画
-        function showLoading() {
-            document.getElementById('loadingOverlay').classList.add('active');
-        }
-
-        function hideLoading() {
-            document.getElementById('loadingOverlay').classList.remove('active');
-        }
-
-        // 加载所有数据
-        async function loadAllData() {
-            try {
-                // 并行加载主题和标签数据
-                const [themesResponse, tagsResponse] = await Promise.all([
-                    fetch(`${API_BASE_URL}/themes`),
-                    fetch(`${API_BASE_URL}/tags/all`)
-                ]);
-
-                if (!themesResponse.ok || !tagsResponse.ok) {
-                    throw new Error('Failed to load data');
-                }
-
-                const themesData = await themesResponse.json();
-                const tagsData = await tagsResponse.json();
-
-                if (themesData.success) {
-                    themes = themesData.data;
-                    populateThemes();
-                }
-
-                if (tagsData.success) {
-                    tagData = tagsData.data;
-                    populateTags();
-                }
-            } catch (error) {
-                console.error('Error loading data:', error);
-                throw error;
-            }
-        }
-
-        // 填充主题选择器
-        function populateThemes() {
-            const themeSelect = document.getElementById('theme');
-            themeSelect.innerHTML = '<option value="">不选择主题</option>';
-            
-            themes.forEach(theme => {
-                const option = document.createElement('option');
-                option.value = theme.unique_id;
-                option.textContent = theme.title;
-                themeSelect.appendChild(option);
-            });
-        }
-
-        // 填充标签选择器
-        function populateTags() {
-            if (!tagData) return;
-
-            // 填充单级标签
-            populateSingleLevelTags();
-            
-            // 初始化多级标签容器
-            initializeMultiLevelTags();
-        }
-
-        // 填充单级标签
-        function populateSingleLevelTags() {
-            // 模特年龄
-            if (tagData.single_level.model_age) {
-                populateSelect('model_age', tagData.single_level.model_age.list);
-            }
-
-            // 模特性别
-            if (tagData.single_level.model_gender) {
-                populateSelect('model_gender', tagData.single_level.model_gender.list);
-            }
-
-            // 模特种族
-            if (tagData.single_level.model_race) {
-                populateSelect('model_race', tagData.single_level.model_race.list);
-            }
-
-            // 模特体型
-            if (tagData.single_level.model_size) {
-                populateSelect('model_size', tagData.single_level.model_size.list);
-            }
-
-            // 姿态标签
-            if (tagData.single_level.pose) {
-                const poseSelect = document.getElementById('pose_tags');
-                poseSelect.innerHTML = '';
-                tagData.single_level.pose.list.forEach(tag => {
-                    const option = document.createElement('option');
-                    option.value = tag.id;
-                    option.textContent = `${tag.name_cn} (${tag.name})`;
-                    poseSelect.appendChild(option);
-                });
-            }
-        }
-
-        // 通用的填充选择器函数
-        function populateSelect(selectId, tags) {
-            const select = document.getElementById(selectId);
-            if (!select) return;
-            
-            select.innerHTML = '<option value="">请选择</option>';
-            tags.forEach(tag => {
-                const option = document.createElement('option');
-                option.value = tag.id;
-                option.textContent = tag.name_cn || tag.name;
-                select.appendChild(option);
-            });
-        }
-
-        // 初始化多级标签
-        function initializeMultiLevelTags() {
-            // 风格标签
-            if (tagData.multi_level.style) {
-                const styleContainer = document.getElementById('styleTagsContainer');
-                styleContainer.innerHTML = createMultiLevelTagSelector('style', tagData.multi_level.style);
-            }
-
-            // 场合标签
-            if (tagData.multi_level.occasion) {
-                const occasionContainer = document.getElementById('occasionTagsContainer');
-                occasionContainer.innerHTML = createMultiLevelTagSelector('occasion', tagData.multi_level.occasion);
-            }
-        }
-
-        // 创建多级标签选择器
-        function createMultiLevelTagSelector(type, data) {
-            let html = '<div class="cascade-selects">';
-            
-            // 一级选择器
-            html += `<select class="form-control" id="${type}_level1" onchange="updateLevel2('${type}', this.value)">`;
-            html += '<option value="">选择一级分类</option>';
-            
-            if (data.cascade && data.cascade.level1) {
-                data.cascade.level1.forEach(item => {
-                    html += `<option value="${item.value}">${item.label}</option>`;
-                });
-            }
-            
-            html += '</select>';
-            
-            // 二级选择器
-            html += `<select class="form-control" id="${type}_level2" onchange="updateLevel3('${type}', this.value)" disabled>`;
-            html += '<option value="">选择二级分类</option>';
-            html += '</select>';
-            
-            // 三级选择器（如果有）
-            html += `<select class="form-control" id="${type}_level3" onchange="updateLevel4('${type}', this.value)" disabled>`;
-            html += '<option value="">选择三级分类</option>';
-            html += '</select>';
-            
-            // 四级选择器（如果有）
-            html += `<select class="form-control" id="${type}_level4" onchange="selectTag('${type}', this.value)" disabled>`;
-            html += '<option value="">选择四级分类</option>';
-            html += '</select>';
-            
-            html += '</div>';
-            
-            // 已选标签展示区
-            html += `<div class="tag-wall" id="${type}_selected_tags"></div>`;
-            
-            return html;
-        }
-
-        // 更新二级选择器
-        function updateLevel2(type, parentId) {
-            const level2Select = document.getElementById(`${type}_level2`);
-            const level3Select = document.getElementById(`${type}_level3`);
-            const level4Select = document.getElementById(`${type}_level4`);
-            
-            level2Select.innerHTML = '<option value="">选择二级分类</option>';
-            level3Select.innerHTML = '<option value="">选择三级分类</option>';
-            level4Select.innerHTML = '<option value="">选择四级分类</option>';
-            level3Select.disabled = true;
-            level4Select.disabled = true;
-            
-            if (!parentId) {
-                level2Select.disabled = true;
-                return;
-            }
-            
-            const data = tagData.multi_level[type];
-            if (data && data.cascade && data.cascade.level2_by_parent && data.cascade.level2_by_parent[parentId]) {
-                level2Select.disabled = false;
-                data.cascade.level2_by_parent[parentId].forEach(item => {
-                    const option = document.createElement('option');
-                    option.value = item.value;
-                    option.textContent = item.label;
-                    level2Select.appendChild(option);
-                });
-            }
-        }
-
-        // 更新三级选择器
-        function updateLevel3(type, parentId) {
-            const level3Select = document.getElementById(`${type}_level3`);
-            const level4Select = document.getElementById(`${type}_level4`);
-            
-            level3Select.innerHTML = '<option value="">选择三级分类</option>';
-            level4Select.innerHTML = '<option value="">选择四级分类</option>';
-            level4Select.disabled = true;
-            
-            if (!parentId) {
-                level3Select.disabled = true;
-                return;
-            }
-            
-            const data = tagData.multi_level[type];
-            if (data && data.cascade && data.cascade.level3_by_parent && data.cascade.level3_by_parent[parentId]) {
-                level3Select.disabled = false;
-                data.cascade.level3_by_parent[parentId].forEach(item => {
-                    const option = document.createElement('option');
-                    option.value = item.value;
-                    option.textContent = item.label;
-                    level3Select.appendChild(option);
-                });
-            } else {
-                // 如果没有三级，直接选中二级
-                selectTag(type, parentId);
-            }
-        }
-
-        // 更新四级选择器
-        function updateLevel4(type, parentId) {
-            const level4Select = document.getElementById(`${type}_level4`);
-            
-            level4Select.innerHTML = '<option value="">选择四级分类</option>';
-            
-            if (!parentId) {
-                level4Select.disabled = true;
-                return;
-            }
-            
-            const data = tagData.multi_level[type];
-            if (data && data.cascade && data.cascade.level4_by_parent && data.cascade.level4_by_parent[parentId]) {
-                level4Select.disabled = false;
-                data.cascade.level4_by_parent[parentId].forEach(item => {
-                    const option = document.createElement('option');
-                    option.value = item.value;
-                    option.textContent = item.label;
-                    level4Select.appendChild(option);
-                });
-            } else {
-                // 如果没有四级，直接选中三级
-                selectTag(type, parentId);
-            }
-        }
-
-        // 选择标签
-        function selectTag(type, tagId) {
-            if (!tagId) return;
-            
-            const selectedContainer = document.getElementById(`${type}_selected_tags`);
-            
-            // 检查是否已选择
-            if (selectedContainer.querySelector(`[data-tag-id="${tagId}"]`)) {
-                return;
-            }
-            
-            // 获取标签信息
-            const data = tagData.multi_level[type];
-            const tagInfo = data.flat[tagId];
-            
-            if (tagInfo) {
-                const tagElement = document.createElement('button');
-                tagElement.type = 'button';
-                tagElement.className = 'tag-item selected';
-                tagElement.setAttribute('data-tag-id', tagId);
-                tagElement.textContent = tagInfo.name_cn || tagInfo.name;
-                tagElement.onclick = function() {
-                    this.remove();
-                    validateForm();
-                };
-                selectedContainer.appendChild(tagElement);
-                
-                validateForm();
-            }
-        }
-
-        // 添加服装详情项
-        function addOutfitDetail() {
-            const container = document.getElementById('outfitDetailsContainer');
-            const outfitId = `outfit_${outfitCounter}`;
-            
-            const outfitItem = document.createElement('div');
-            outfitItem.className = 'outfit-item';
-            outfitItem.id = outfitId;
-            
-            let html = '';
-            if (outfitCounter > 0) {
-                html += `<button type="button" class="remove-button" onclick="removeOutfit('${outfitId}')">删除</button>`;
-            }
-            
-            html += `
-                <div style="margin-bottom: 15px;">
-                    <label>产品类型 <span class="required">*</span></label>
-                    <div class="cascade-selects" id="${outfitId}_product_type">
-                        <select class="form-control" onchange="updateProductLevel2('${outfitId}', this.value)">
-                            <option value="">选择一级</option>
-                        </select>
-                        <select class="form-control" disabled>
-                            <option value="">选择二级</option>
-                        </select>
-                        <select class="form-control" disabled>
-                            <option value="">选择三级</option>
-                        </select>
-                        <select class="form-control" disabled>
-                            <option value="">选择四级</option>
-                        </select>
-                    </div>
-                    <div class="tag-wall" id="${outfitId}_product_selected"></div>
-                </div>
-                
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                    <div>
-                        <label>面料材质</label>
-                        <select class="form-control" id="${outfitId}_fabric">
-                            <option value="">选择面料</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label>廓形版型</label>
-                        <div class="cascade-selects" id="${outfitId}_silhouette">
-                            <select class="form-control" onchange="updateSilhouetteLevel2('${outfitId}', this.value)">
-                                <option value="">选择廓形</option>
-                            </select>
-                        </div>
-                        <div class="tag-wall" id="${outfitId}_silhouette_selected"></div>
-                    </div>
-                </div>
-            `;
-            
-            outfitItem.innerHTML = html;
-            container.appendChild(outfitItem);
-            
-            // 填充产品类型选项
-            if (tagData && tagData.multi_level.product_type) {
-                const productSelect = outfitItem.querySelector(`#${outfitId}_product_type select`);
-                tagData.multi_level.product_type.cascade.level1.forEach(item => {
-                    const option = document.createElement('option');
-                    option.value = item.value;
-                    option.textContent = item.label;
-                    productSelect.appendChild(option);
-                });
-            }
-            
-            // 填充面料选项
-            if (tagData && tagData.single_level.fabric) {
-                const fabricSelect = document.getElementById(`${outfitId}_fabric`);
-                tagData.single_level.fabric.list.forEach(tag => {
-                    const option = document.createElement('option');
-                    option.value = tag.id;
-                    option.textContent = tag.name_cn || tag.name;
-                    fabricSelect.appendChild(option);
-                });
-            }
-            
-            // 填充廓形选项
-            if (tagData && tagData.multi_level.silhouette) {
-                const silhouetteSelect = outfitItem.querySelector(`#${outfitId}_silhouette select`);
-                tagData.multi_level.silhouette.cascade.level1.forEach(item => {
-                    const option = document.createElement('option');
-                    option.value = item.value;
-                    option.textContent = item.label;
-                    silhouetteSelect.appendChild(option);
-                });
-            }
-            
-            outfitCounter++;
-            validateForm();
-        }
-
-        // 更新产品类型级联
-        function updateProductLevel2(outfitId, parentId) {
-            const container = document.getElementById(`${outfitId}_product_type`);
-            const selects = container.querySelectorAll('select');
-            const level2Select = selects[1];
-            const level3Select = selects[2];
-            const level4Select = selects[3];
-            
-            level2Select.innerHTML = '<option value="">选择二级</option>';
-            level3Select.innerHTML = '<option value="">选择三级</option>';
-            level4Select.innerHTML = '<option value="">选择四级</option>';
-            level3Select.disabled = true;
-            level4Select.disabled = true;
-            
-            if (!parentId) {
-                level2Select.disabled = true;
-                return;
-            }
-            
-            const data = tagData.multi_level.product_type;
-            if (data && data.cascade && data.cascade.level2_by_parent && data.cascade.level2_by_parent[parentId]) {
-                level2Select.disabled = false;
-                data.cascade.level2_by_parent[parentId].forEach(item => {
-                    const option = document.createElement('option');
-                    option.value = item.value;
-                    option.textContent = item.label;
-                    level2Select.appendChild(option);
-                });
-                
-                // 绑定事件
-                level2Select.onchange = function() {
-                    updateProductLevel3(outfitId, this.value);
-                };
-            }
-        }
-
-        // 更新产品类型第三级
-        function updateProductLevel3(outfitId, parentId) {
-            const container = document.getElementById(`${outfitId}_product_type`);
-            const selects = container.querySelectorAll('select');
-            const level3Select = selects[2];
-            const level4Select = selects[3];
-            
-            level3Select.innerHTML = '<option value="">选择三级</option>';
-            level4Select.innerHTML = '<option value="">选择四级</option>';
-            level4Select.disabled = true;
-            
-            if (!parentId) {
-                level3Select.disabled = true;
-                return;
-            }
-            
-            const data = tagData.multi_level.product_type;
-            if (data && data.cascade && data.cascade.level3_by_parent && data.cascade.level3_by_parent[parentId]) {
-                level3Select.disabled = false;
-                data.cascade.level3_by_parent[parentId].forEach(item => {
-                    const option = document.createElement('option');
-                    option.value = item.value;
-                    option.textContent = item.label;
-                    level3Select.appendChild(option);
-                });
-                
-                level3Select.onchange = function() {
-                    updateProductLevel4(outfitId, this.value);
-                };
-            } else {
-                selectProductTag(outfitId, parentId);
-            }
-        }
-
-        // 更新产品类型第四级
-        function updateProductLevel4(outfitId, parentId) {
-            const container = document.getElementById(`${outfitId}_product_type`);
-            const selects = container.querySelectorAll('select');
-            const level4Select = selects[3];
-            
-            level4Select.innerHTML = '<option value="">选择四级</option>';
-            
-            if (!parentId) {
-                level4Select.disabled = true;
-                return;
-            }
-            
-            const data = tagData.multi_level.product_type;
-            if (data && data.cascade && data.cascade.level4_by_parent && data.cascade.level4_by_parent[parentId]) {
-                level4Select.disabled = false;
-                data.cascade.level4_by_parent[parentId].forEach(item => {
-                    const option = document.createElement('option');
-                    option.value = item.value;
-                    option.textContent = item.label;
-                    level4Select.appendChild(option);
-                });
-                
-                level4Select.onchange = function() {
-                    selectProductTag(outfitId, this.value);
-                };
-            } else {
-                selectProductTag(outfitId, parentId);
-            }
-        }
-
-        // 选择产品标签
-        function selectProductTag(outfitId, tagId) {
-            if (!tagId) return;
-            
-            const selectedContainer = document.getElementById(`${outfitId}_product_selected`);
-            selectedContainer.innerHTML = ''; // 只保留一个
-            
-            const data = tagData.multi_level.product_type;
-            const tagInfo = data.flat[tagId];
-            
-            if (tagInfo) {
-                const tagElement = document.createElement('button');
-                tagElement.type = 'button';
-                tagElement.className = 'tag-item selected';
-                tagElement.setAttribute('data-tag-id', tagId);
-                tagElement.textContent = tagInfo.name_cn || tagInfo.name;
-                tagElement.onclick = function() {
-                    this.remove();
-                    validateForm();
-                };
-                selectedContainer.appendChild(tagElement);
-                
-                validateForm();
-            }
-        }
-
-        // 更新廓形级联
-        function updateSilhouetteLevel2(outfitId, parentId) {
-            // 简化版实现，可根据需要扩展
-            selectSilhouetteTag(outfitId, parentId);
-        }
-
-        // 选择廓形标签
-        function selectSilhouetteTag(outfitId, tagId) {
-            if (!tagId) return;
-            
-            const selectedContainer = document.getElementById(`${outfitId}_silhouette_selected`);
-            selectedContainer.innerHTML = ''; // 只保留一个
-            
-            const data = tagData.multi_level.silhouette;
-            if (data && data.flat[tagId]) {
-                const tagInfo = data.flat[tagId];
-                const tagElement = document.createElement('button');
-                tagElement.type = 'button';
-                tagElement.className = 'tag-item selected';
-                tagElement.setAttribute('data-tag-id', tagId);
-                tagElement.textContent = tagInfo.name_cn || tagInfo.name;
-                tagElement.onclick = function() {
-                    this.remove();
-                    validateForm();
-                };
-                selectedContainer.appendChild(tagElement);
-                
-                validateForm();
-            }
-        }
-
-        // 删除服装项
-        function removeOutfit(outfitId) {
-            const element = document.getElementById(outfitId);
-            if (element) {
-                element.remove();
-                validateForm();
-            }
-        }
-
-        // 初始化事件监听器
         function initializeEventListeners() {
             // 主图上传
             const mainUploadArea = document.getElementById('mainUploadArea');
@@ -1146,28 +808,42 @@
             mainUploadArea.addEventListener('click', () => mainImageInput.click());
             mainUploadArea.addEventListener('dragover', handleDragOver);
             mainUploadArea.addEventListener('drop', handleMainImageDrop);
-            mainUploadArea.addEventListener('dragleave', (e) => e.currentTarget.classList.remove('dragover'));
             mainImageInput.addEventListener('change', handleMainImageSelect);
-
-            // 参考图上传
-            document.querySelectorAll('.reference-upload').forEach(area => {
-                area.addEventListener('click', () => handleReferenceUploadClick(area));
-                area.addEventListener('dragover', handleDragOver);
-                area.addEventListener('drop', (e) => handleReferenceImageDrop(e, area));
-                area.addEventListener('dragleave', (e) => e.currentTarget.classList.remove('dragover'));
-            });
 
             // 图片类型切换
             document.querySelectorAll('input[name="reference_type"]').forEach(radio => {
                 radio.addEventListener('change', handleReferenceTypeChange);
             });
 
+            // 服装类别级联
+            document.addEventListener('change', function(e) {
+                // 产品类型级联
+                if (e.target.name === 'product_type_level1') {
+                    updateOutfitLevel2(e.target);
+                } else if (e.target.name === 'product_type_level2') {
+                    updateOutfitLevel3(e.target);
+                }
+            });
+
+            // 风格和场合标签级联
+            document.addEventListener('change', function(e) {
+                if (e.target.name === 'style_level1') {
+                    updateStyleLevel2(e.target);
+                } else if (e.target.name === 'style_level2') {
+                    updateStyleTagWall(e.target);
+                } else if (e.target.name === 'scene_level1') {
+                    updateSceneLevel2(e.target);
+                } else if (e.target.name === 'scene_level2') {
+                    updateSceneTagWall(e.target);
+                }
+            });
+
             // 表单提交
             document.getElementById('annotationForm').addEventListener('submit', handleSubmit);
 
-            // 表单变化监听（用于验证）
-            document.addEventListener('input', validateForm);
-            document.addEventListener('change', validateForm);
+            // 表单变化监听
+            document.addEventListener('input', saveToLocalStorage);
+            document.addEventListener('change', saveToLocalStorage);
         }
 
         function handleDragOver(e) {
@@ -1191,208 +867,234 @@
         }
 
         async function handleMainImageFile(file) {
-            if (!file.type.match('image/(png|jpeg|jpg)')) {
+            if (!file.type.match('image/(png|jpeg)')) {
                 alert('请上传PNG或JPG格式的图片');
                 return;
             }
 
-            // 验证图片尺寸（竖屏）
-            const isValid = await validateImageDimensions(file);
-            if (!isValid) {
-                return;
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    if (img.width < 1080 || img.height < 1620) {
+                        alert('图片分辨率必须至少为1080×1620');
+                        return;
+                    }
+                    if (img.width > 2160 || img.height > 3840) {
+                        alert('图片分辨率不能超过2160×3840');
+                        return;
+                    }
+                    if (img.height <= img.width) {
+                        alert('图片必须是竖屏（高度大于宽度）');
+                        return;
+                    }
+                }
             }
+            // 显示上传状态
+            const uploadArea = document.getElementById('mainUploadArea');
+            const originalContent = uploadArea.innerHTML;
+            uploadArea.innerHTML = `
+                <div style="text-align: center; padding: 40px;">
+                    <div style="font-size: 16px; color: #007bff; margin-bottom: 10px;">
+                        📤 正在上传主图...
+                    </div>
+                    <div style="width: 100%; background-color: #f0f0f0; border-radius: 10px; overflow: hidden;">
+                        <div id="mainUploadProgress" style="width: 0%; height: 8px; background-color: #007bff; transition: width 0.3s;"></div>
+                    </div>
+                </div>
+            `;
 
-            // 上传到S3
-            showLoading();
             try {
+                // 创建FormData对象
                 const formData = new FormData();
                 formData.append('file', file);
-                formData.append('image_type', 'reference_image');
+                formData.append('image_type', 'main_image');
 
-                const response = await fetch(`${API_BASE_URL}/upload-image`, {
+                // 调用上传API
+                const response = await fetch('/api/upload-image', {
                     method: 'POST',
                     body: formData
                 });
 
                 const result = await response.json();
-                
+
                 if (result.success) {
+                    // 上传成功
                     mainImage = {
                         file: file,
-                        url: URL.createObjectURL(file),
-                        s3_url: result.data.url,
+                        url: URL.createObjectURL(file), // 本地预览用
+                        s3_url: result.data.url,        // 真实的S3 URL
+                        cached: result.data.cached,     // 是否来自缓存
                         image_info: result.data.image_info
                     };
-                    
+
                     displayMainImage();
-                    updateImagePreview();
+                    saveToLocalStorage();
                     validateForm();
+
+                    // 显示成功消息
+                    if (result.data.cached) {
+                        console.log('✅ 图片上传成功 (来自缓存)');
+                    } else {
+                        console.log('✅ 图片上传成功');
+                    }
                 } else {
-                    alert(`上传失败: ${result.error}`);
+                    throw new Error(result.error);
                 }
             } catch (error) {
-                console.error('Upload error:', error);
-                alert('上传失败，请重试');
-            } finally {
-                hideLoading();
+                console.error('主图上传失败:', error);
+                alert(`主图上传失败: ${error.message}`);
+                
+                // 恢复原始上传区域
+                uploadArea.innerHTML = originalContent;
             }
-        }
-
-        // 验证图片尺寸（竖屏要求）
-        function validateImageDimensions(file) {
-            return new Promise((resolve) => {
-                const img = new Image();
-                const reader = new FileReader();
-                
-                reader.onload = function(e) {
-                    img.onload = function() {
-                        // 检查是否为竖屏（高度 > 宽度）
-                        if (img.width >= img.height) {
-                            alert('请上传竖屏图片（高度必须大于宽度）');
-                            resolve(false);
-                            return;
-                        }
-                        
-                        // 检查最小分辨率
-                        if (img.width < 1080 || img.height < 1920) {
-                            alert(`图片分辨率过低\n当前：${img.width}×${img.height}\n最小要求：1080×1920`);
-                            resolve(false);
-                            return;
-                        }
-                        
-                        // 检查最大分辨率
-                        if (img.width > 2160 || img.height > 3840) {
-                            alert(`图片分辨率过高\n当前：${img.width}×${img.height}\n最大限制：2160×3840`);
-                            resolve(false);
-                            return;
-                        }
-                        
-                        resolve(true);
-                    };
-                    img.src = e.target.result;
-                };
-                
-                reader.readAsDataURL(file);
-            });
         }
 
         function displayMainImage() {
             const preview = document.getElementById('mainImagePreview');
-            const info = mainImage.image_info;
             preview.innerHTML = `
-                <img src="${mainImage.url}" class="main-image-preview" alt="主图预览">
-                <p style="margin-top: 10px; font-size: 12px; color: #666;">
-                    尺寸：${info.width}×${info.height} | 
-                    格式：${info.format} | 
-                    大小：${info.file_size_mb}MB
-                </p>
+                <div style="position: relative; display: inline-block;">
+                    <img src="${mainImage.url}" class="main-image-preview" alt="主图预览">
+                    <button class="delete-image-btn" onclick="deleteMainImage()" style="display: flex;">×</button>
+                </div>
             `;
         }
 
-        function handleReferenceUploadClick(area) {
+        function deleteMainImage() {
+            mainImage = null;
+            document.getElementById('mainImagePreview').innerHTML = '';
+            document.getElementById('mainImageInput').value = '';
+            saveToLocalStorage();
+            validateForm();
+        }
+
+        function addReferenceImage(type) {
             const input = document.createElement('input');
             input.type = 'file';
             input.accept = 'image/png,image/jpeg';
-            input.multiple = true;
-            input.onchange = (e) => handleReferenceImageSelect(e, area);
+            input.onchange = (e) => {
+                if (e.target.files.length > 0) {
+                    handleReferenceImageFile(e.target.files[0], type);
+                }
+            };
             input.click();
         }
 
-        function handleReferenceImageDrop(e, area) {
-            e.preventDefault();
-            area.classList.remove('dragover');
-            const files = Array.from(e.dataTransfer.files);
-            handleReferenceImages(files, area.dataset.type);
-        }
+        async function handleReferenceImageFile(file, type) {
+            if (!file.type.match('image/(png|jpeg)')) {
+                alert(`${file.name}: 请上传PNG或JPG格式的图片`);
+                return;
+            }
 
-        function handleReferenceImageSelect(e, area) {
-            const files = Array.from(e.target.files);
-            handleReferenceImages(files, area.dataset.type);
-        }
-
-        async function handleReferenceImages(files, type) {
-            showLoading();
+            const imageId = `${type}_${referenceImageCounters[type]++}`;
             
-            for (const file of files) {
-                if (!file.type.match('image/(png|jpeg|jpg)')) {
-                    alert(`${file.name}: 请上传PNG或JPG格式的图片`);
-                    continue;
-                }
+            // 先创建占位符显示上传状态
+            const imageData = {
+                id: imageId,
+                file: file,
+                url: URL.createObjectURL(file),  // 临时预览
+                s3_url: null,  // 上传完成后更新
+                description: '',
+                uploading: true
+            };
 
-                // 验证竖屏
-                const isValid = await validateImageDimensions(file);
-                if (!isValid) {
-                    continue;
-                }
+            referenceImages[type].push(imageData);
+            createImageDescriptionItem(type, imageData);
 
-                try {
-                    const formData = new FormData();
-                    formData.append('file', file);
-                    formData.append('image_type', type);
+            try {
+                // 创建FormData对象
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('image_type', `${type}_reference`);
 
-                    const response = await fetch(`${API_BASE_URL}/upload-image`, {
-                        method: 'POST',
-                        body: formData
-                    });
+                // 调用上传API
+                const response = await fetch('/api/upload-image', {
+                    method: 'POST',
+                    body: formData
+                });
 
-                    const result = await response.json();
+                const result = await response.json();
+
+                if (result.success) {
+                    // 更新图片数据
+                    imageData.s3_url = result.data.url;
+                    imageData.cached = result.data.cached;
+                    imageData.image_info = result.data.image_info;
+                    imageData.uploading = false;
+
+                    // 更新界面显示
+                    updateImageDescriptionItem(type, imageData);
                     
-                    if (result.success) {
-                        // 映射类型名称
-                        const mappedType = type.replace('prompt_', '');
-                        
-                        if (!referenceImages[type]) {
-                            referenceImages[type] = [];
-                        }
-                        
-                        referenceImages[type].push({
-                            file: file,
-                            url: URL.createObjectURL(file),
-                            s3_url: result.data.url
-                        });
-                        
-                        updateReferenceCount(mappedType);
-                        updateImagePreview();
-                    } else {
-                        alert(`${file.name} 上传失败: ${result.error}`);
-                    }
-                } catch (error) {
-                    console.error(`Error uploading ${file.name}:`, error);
-                    alert(`${file.name} 上传失败`);
+                    saveToLocalStorage();
+                    validateForm();
+
+                    console.log(`✅ ${type}参考图上传成功`, result.data.cached ? '(来自缓存)' : '');
+                } else {
+                    throw new Error(result.error);
                 }
+            } catch (error) {
+                console.error(`${type}参考图上传失败:`, error);
+                
+                // 移除失败的图片
+                deleteReferenceImage(type, imageId);
+                
+                alert(`${type}参考图上传失败: ${error.message}`);
+            }
+        }
+
+        function createImageDescriptionItem(type, imageData) {
+            const container = document.getElementById(`${type}ImagesContainer`);
+            const div = document.createElement('div');
+            div.className = 'image-description-item';
+            div.id = imageData.id;
+            
+            const uploadingClass = imageData.uploading ? 'uploading' : '';
+            const uploadingText = imageData.uploading ? '(上传中...)' : '';
+            
+            div.innerHTML = `
+                <div class="image-description-content ${uploadingClass}">
+                    <div class="image-preview-container">
+                        <img src="${imageData.url}" alt="${type}参考图">
+                        <button class="delete-image-btn" onclick="deleteReferenceImage('${type}', '${imageData.id}')" 
+                                ${imageData.uploading ? 'style="display: none;"' : ''}>×</button>
+                        ${imageData.uploading ? '<div class="upload-spinner">⏳</div>' : ''}
+                    </div>
+                    <div class="description-input-container">
+                        <label>图片描述 (选填) ${uploadingText}</label>
+                        <textarea class="form-control" placeholder="请描述这张图片，可复制Prompt中相关内容..." rows="3" 
+                                onchange="updateImageDescription('${type}', '${imageData.id}', this.value)"
+                                ${imageData.uploading ? 'disabled' : ''}></textarea>
+                        ${imageData.s3_url ? `<small style="color: #28a745; font-size: 11px;">✅ 上传完成</small>` : ''}
+                    </div>
+                </div>
+            `;
+            
+            container.appendChild(div);
+        }
+
+        function deleteReferenceImage(type, imageId) {
+            // 从数组中移除
+            const index = referenceImages[type].findIndex(img => img.id === imageId);
+            if (index > -1) {
+                referenceImages[type].splice(index, 1);
             }
             
-            hideLoading();
+            // 从DOM中移除
+            const element = document.getElementById(imageId);
+            if (element) {
+                element.remove();
+            }
+            
+            saveToLocalStorage();
+            validateForm();
         }
 
-        function updateReferenceCount(type) {
-            const countElement = document.getElementById(`${type}Count`);
-            if (countElement) {
-                const fullType = `prompt_${type}`;
-                const count = referenceImages[fullType] ? referenceImages[fullType].length : 0;
-                countElement.textContent = `已上传: ${count}张`;
+        function updateImageDescription(type, imageId, value) {
+            const imageData = referenceImages[type].find(img => img.id === imageId);
+            if (imageData) {
+                imageData.description = value;
+                saveToLocalStorage();
             }
-        }
-
-        function updateImagePreview() {
-            const preview = document.getElementById('allImagesPreview');
-            let html = '';
-
-            // 主图
-            if (mainImage) {
-                html += `<img src="${mainImage.url}" class="preview-image" alt="主图" title="主图">`;
-            }
-
-            // 参考图
-            Object.values(referenceImages).forEach(images => {
-                if (Array.isArray(images)) {
-                    images.forEach(img => {
-                        html += `<img src="${img.url}" class="preview-image" alt="参考图" title="参考图">`;
-                    });
-                }
-            });
-
-            preview.innerHTML = html;
         }
 
         function handleReferenceTypeChange(e) {
@@ -1402,259 +1104,961 @@
             validateForm();
         }
 
+        function updateOutfitLevel2(select) {
+            const container = select.closest('.outfit-item');
+            const level2Select = container.querySelector('select[name="product_type_level2"]');
+            const level3Select = container.querySelector('select[name="product_type_level3"]');
+            
+            // 重置下级选择器
+            level2Select.innerHTML = '<option value="">选择二级类别</option>';
+            level3Select.innerHTML = '<option value="">选择三级类别</option>';
+            level3Select.disabled = true;
+            
+            const selectedLevel1Id = select.value;
+            if (!selectedLevel1Id || !tagData.loaded) {
+                level2Select.disabled = true;
+                return;
+            }
+            
+            // 从真实标签数据获取二级选项
+            const productTypeData = tagData.multi_level.product_type;
+            if (productTypeData && productTypeData.cascade.level2_by_parent[selectedLevel1Id]) {
+                level2Select.disabled = false;
+                
+                productTypeData.cascade.level2_by_parent[selectedLevel1Id].forEach(tag => {
+                    const option = document.createElement('option');
+                    option.value = tag.value;
+                    option.textContent = tag.label;
+                    level2Select.appendChild(option);
+                });
+            } else {
+                level2Select.disabled = true;
+            }
+        }
+
+        function updateOutfitLevel3(select) {
+            const container = select.closest('.outfit-item');
+            const level3Select = container.querySelector('select[name="product_type_level3"]');
+            
+            level3Select.innerHTML = '<option value="">选择三级类别</option>';
+            
+            const selectedLevel2Id = select.value;
+            if (!selectedLevel2Id || !tagData.loaded) {
+                level3Select.disabled = true;
+                return;
+            }
+            
+            // 从真实标签数据获取三级选项
+            const productTypeData = tagData.multi_level.product_type;
+            if (productTypeData && productTypeData.cascade.level3_by_parent[selectedLevel2Id]) {
+                level3Select.disabled = false;
+                
+                productTypeData.cascade.level3_by_parent[selectedLevel2Id].forEach(tag => {
+                    const option = document.createElement('option');
+                    option.value = tag.value;
+                    option.textContent = tag.label;
+                    level3Select.appendChild(option);
+                });
+            } else {
+                level3Select.disabled = true;
+            }
+        }
+        function updateStyleLevel2(select) {
+            const container = select.parentNode;
+            const level2Select = container.querySelector('select[name="style_level2"]');
+            const tagWall = container.querySelector('.tag-wall');
+            
+            level2Select.innerHTML = '<option value="">选择二级风格</option>';
+            tagWall.innerHTML = '';
+            
+            const selectedLevel1Id = select.value;
+            if (!selectedLevel1Id || !tagData.loaded) {
+                level2Select.disabled = true;
+                return;
+            }
+            
+            // 从真实标签数据获取子级标签
+            const styleTagData = tagData.multi_level.style;
+            if (styleTagData && styleTagData.cascade.level2_by_parent[selectedLevel1Id]) {
+                level2Select.disabled = false;
+                
+                styleTagData.cascade.level2_by_parent[selectedLevel1Id].forEach(tag => {
+                    const option = document.createElement('option');
+                    option.value = tag.value;  // 真实的标签ID
+                    option.textContent = tag.label;  // 中文显示名
+                    level2Select.appendChild(option);
+                });
+            } else {
+                level2Select.disabled = true;
+            }
+        }
+
+        function updateStyleTagWall(select) {
+            const container = select.parentNode;
+            const level1Select = container.querySelector('select[name="style_level1"]');
+            const tagWall = container.querySelector('.tag-wall');
+            
+            tagWall.innerHTML = '';
+            
+            const selectedLevel2Id = select.value;
+            const selectedLevel1Id = level1Select.value;
+            
+            if (!selectedLevel2Id || !tagData.loaded) return;
+            
+            // 获取第三级标签（叶子节点）
+            const styleTagData = tagData.multi_level.style;
+            if (styleTagData && styleTagData.cascade.level3_by_parent[selectedLevel2Id]) {
+                styleTagData.cascade.level3_by_parent[selectedLevel2Id].forEach(tag => {
+                    const button = document.createElement('button');
+                    button.type = 'button';
+                    button.className = 'tag-item';
+                    button.textContent = tag.label;  // 显示中文名
+                    button.dataset.tagId = tag.value;  // 存储真实ID
+                    button.onclick = () => toggleTag(button);
+                    tagWall.appendChild(button);
+                });
+            }
+        }
+
+        function updateSceneLevel2(select) {
+            const container = select.parentNode;
+            const level2Select = container.querySelector('select[name="scene_level2"]');
+            const tagWall = container.querySelector('.tag-wall');
+            
+            level2Select.innerHTML = '<option value="">选择二级场合</option>';
+            tagWall.innerHTML = '';
+            
+            const selectedLevel1Id = select.value;
+            if (!selectedLevel1Id || !tagData.loaded) {
+                level2Select.disabled = true;
+                return;
+            }
+            
+            // 从真实标签数据获取子级标签
+            const sceneTagData = tagData.multi_level.style;
+            if (sceneTagData && sceneTagData.cascade.level2_by_parent[selectedLevel1Id]) {
+                level2Select.disabled = false;
+                
+                sceneTagData.cascade.level2_by_parent[selectedLevel1Id].forEach(tag => {
+                    const option = document.createElement('option');
+                    option.value = tag.value;  // 真实的标签ID
+                    option.textContent = tag.label;  // 中文显示名
+                    level2Select.appendChild(option);
+                });
+            } else {
+                level2Select.disabled = true;
+            }
+        }
+
+        function updateSceneTagWall(select) {
+            const container = select.parentNode;
+            const level1Select = container.querySelector('select[name="scene_level1"]');
+            const tagWall = container.querySelector('.tag-wall');
+            
+            tagWall.innerHTML = '';
+            
+            const selectedLevel2Id = select.value;
+            const selectedLevel1Id = level1Select.value;
+            
+            if (!selectedLevel2Id || !tagData.loaded) return;
+            
+            // 获取第三级标签（叶子节点）
+            const sceneTagData = tagData.multi_level.scene;
+            if (sceneTagData && sceneTagData.cascade.level3_by_parent[selectedLevel2Id]) {
+                sceneTagData.cascade.level3_by_parent[selectedLevel2Id].forEach(tag => {
+                    const button = document.createElement('button');
+                    button.type = 'button';
+                    button.className = 'tag-item';
+                    button.textContent = tag.label;  // 显示中文名
+                    button.dataset.tagId = tag.value;  // 存储真实ID
+                    button.onclick = () => toggleTag(button);
+                    tagWall.appendChild(button);
+                });
+            }
+        }
+
+        function toggleTag(button) {
+            button.classList.toggle('selected');
+            saveToLocalStorage();
+            validateForm();
+        }
+
+        function addStyleTag() {
+            const container = document.getElementById('styleTagsContainer');
+            const newTag = document.createElement('div');
+            newTag.className = 'tag-selection';
+            newTag.id = `styleTag${styleTagCounter}`;
+            newTag.innerHTML = `
+                <div style="border-top: 1px solid #ddd; padding-top: 15px; margin-top: 15px;">
+                    <button type="button" class="remove-button" onclick="removeStyleTag(${styleTagCounter})" style="margin-bottom: 10px;">删除此项</button>
+                    <select class="form-control" name="style_level1" style="margin-bottom: 10px;">
+                        <option value="">选择一级风格</option>
+                        <option value="realistic">写实</option>
+                        <option value="artistic">艺术</option>
+                        <option value="cartoon">卡通</option>
+                    </select>
+                    <select class="form-control" name="style_level2" style="margin-bottom: 10px;" disabled>
+                        <option value="">选择二级风格</option>
+                    </select>
+                    <div class="tag-wall" id="styleTagWall${styleTagCounter}"></div>
+                </div>
+            `;
+            container.appendChild(newTag);
+            styleTagCounter++;
+        }
+
+        function removeStyleTag(id) {
+            const element = document.getElementById(`styleTag${id}`);
+            if (element) {
+                element.remove();
+                saveToLocalStorage();
+                validateForm();
+            }
+        }
+
+        function addSceneTag() {
+            const container = document.getElementById('sceneTagsContainer');
+            const newTag = document.createElement('div');
+            newTag.className = 'tag-selection';
+            newTag.id = `sceneTag${sceneTagCounter}`;
+            newTag.innerHTML = `
+                <div style="border-top: 1px solid #ddd; padding-top: 15px; margin-top: 15px;">
+                    <button type="button" class="remove-button" onclick="removeSceneTag(${sceneTagCounter})" style="margin-bottom: 10px;">删除此项</button>
+                    <select class="form-control" name="scene_level1" style="margin-bottom: 10px;">
+                        <option value="">选择一级场合</option>
+                        <option value="daily">日常</option>
+                        <option value="work">工作</option>
+                        <option value="party">聚会</option>
+                        <option value="outdoor">户外</option>
+                    </select>
+                    <select class="form-control" name="scene_level2" style="margin-bottom: 10px;" disabled>
+                        <option value="">选择二级场合</option>
+                    </select>
+                    <div class="tag-wall" id="sceneTagWall${sceneTagCounter}"></div>
+                </div>
+            `;
+            container.appendChild(newTag);
+            sceneTagCounter++;
+        }
+
+        function removeSceneTag(id) {
+            const element = document.getElementById(`sceneTag${id}`);
+            if (element) {
+                element.remove();
+                saveToLocalStorage();
+                validateForm();
+            }
+        }
+
+        function addOutfitDetail() {
+            if (!tagData.loaded) {
+                alert('标签数据尚未加载完成，请稍后再试');
+                return;
+            }
+
+            const container = document.getElementById('outfitDetailsContainer');
+            const newOutfit = document.createElement('div');
+            newOutfit.className = 'outfit-item';
+            newOutfit.id = `outfit${outfitCounter}`;
+            
+            newOutfit.innerHTML = `
+                <button type="button" class="remove-button" onclick="removeOutfit(${outfitCounter})">删除</button>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                    <div>
+                        <label>服饰类别</label>
+                        <select class="form-control outfit-type" name="product_type_level1">
+                            <option value="">选择一级类别</option>
+                        </select>
+                        <select class="form-control" name="product_type_level2" style="margin-top: 10px;" disabled>
+                            <option value="">选择二级类别</option>
+                        </select>
+                        <select class="form-control" name="product_type_level3" style="margin-top: 10px;" disabled>
+                            <option value="">选择三级类别</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>服饰材质 (Main)</label>
+                        <select class="form-control" name="fabric_tag_ids">
+                            <option value="">选择材质</option>
+                        </select>
+                    </div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 15px;">
+                    <div>
+                        <label>服饰版型</label>
+                        <select class="form-control" name="silhouette_tag_ids">
+                            <option value="">选择版型</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label>颜色标签</label>
+                        <select class="form-control" name="color_tag_ids">
+                            <option value="">选择颜色</option>
+                        </select>
+                    </div>
+                </div>
+            `;
+            
+            container.appendChild(newOutfit);
+            
+            // 填充真实数据
+            populateOutfitSelectors(newOutfit);
+            
+            outfitCounter++;
+            saveToLocalStorage();
+            validateForm();
+        }
+
+        function populateOutfitSelectors(outfitElement) {
+            if (!tagData.loaded) return;
+
+            // 填充产品类型（多级标签）
+            const productTypeLevel1 = outfitElement.querySelector('select[name="product_type_level1"]');
+            if (tagData.multi_level.product_type && tagData.multi_level.product_type.cascade.level1) {
+                tagData.multi_level.product_type.cascade.level1.forEach(tag => {
+                    const option = document.createElement('option');
+                    option.value = tag.value;  // 真实标签ID
+                    option.textContent = tag.label;  // 中文显示名
+                    productTypeLevel1.appendChild(option);
+                });
+            }
+
+            // 填充面料标签（单级标签）
+            const fabricSelect = outfitElement.querySelector('select[name="fabric_tag_ids"]');
+            if (tagData.single_level.fabric && tagData.single_level.fabric.list) {
+                tagData.single_level.fabric.list.forEach(tag => {
+                    const option = document.createElement('option');
+                    option.value = tag.id;
+                    option.textContent = tag.name_cn || tag.name;
+                    fabricSelect.appendChild(option);
+                });
+            }
+
+            // 填充廓形标签（多级标签）
+            const silhouetteSelect = outfitElement.querySelector('select[name="silhouette_tag_ids"]');
+            if (tagData.multi_level.silhouette && tagData.multi_level.silhouette.cascade.level1) {
+                tagData.multi_level.silhouette.cascade.level1.forEach(tag => {
+                    const option = document.createElement('option');
+                    option.value = tag.value;
+                    option.textContent = tag.label;
+                    silhouetteSelect.appendChild(option);
+                });
+            }
+
+            // 填充品牌标签（单级标签）
+            const colorSelect = outfitElement.querySelector('select[name="color_tag_ids"]');
+            if (tagData.single_level.color && tagData.single_level.color.list) {
+                tagData.single_level.color.list.forEach(tag => {
+                    const option = document.createElement('option');
+                    option.value = tag.id;
+                    option.textContent = tag.name_cn || tag.name;
+                    colorSelect.appendChild(option);
+                });
+            }
+        }
+
+        function removeOutfit(id) {
+            const element = document.getElementById(`outfit${id}`);
+            if (element) {
+                element.remove();
+                saveToLocalStorage();
+                validateForm();
+            }
+        }
+
+        function showLoadingState() {
+            const rightPanel = document.querySelector('.right-panel');
+            rightPanel.innerHTML = `
+                <div style="text-align: center; padding: 50px;">
+                    <div style="font-size: 18px; color: #666;">
+                        🔄 正在加载标签数据...
+                    </div>
+                </div>
+            `;
+        }
+
+        function hideLoadingState() {
+            // 恢复原始内容或重新渲染表单
+        }
+
+        function showErrorState() {
+            const rightPanel = document.querySelector('.right-panel');
+            rightPanel.innerHTML = `
+                <div style="text-align: center; padding: 50px;">
+                    <div style="font-size: 18px; color: #dc3545; margin-bottom: 20px;">
+                        ❌ 标签数据加载失败
+                    </div>
+                    <button onclick="location.reload()" class="submit-button" style="width: auto;">
+                        重新加载
+                    </button>
+                </div>
+            `;
+        }
+
+        function validateFormForSubmit() {
+            // 清除所有错误信息
+            document.querySelectorAll('.error-message').forEach(el => {
+                el.classList.remove('show');
+                el.textContent = '';
+            });
+
+            let isValid = true;
+            let firstErrorElement = null;
+
+            // 检查主图
+            if (!mainImage) {
+                const uploadArea = document.getElementById('mainUploadArea');
+                showError(uploadArea, '请上传主图');
+                if (!firstErrorElement) firstErrorElement = uploadArea;
+                isValid = false;
+            }
+            // 检查是否有图片正在上传
+            const hasUploadingImages = Object.values(referenceImages).some(images => 
+                images.some(img => img.uploading || !img.s3_url)
+            );
+
+            if (hasUploadingImages) {
+                alert('图片仍在上传中，请等待上传完成后再提交');
+                return false;
+            }
+
+            // 检查主图是否有S3 URL
+            if (mainImage && !mainImage.s3_url) {
+                alert('主图上传未完成，请等待上传完成后再提交');
+                return false;
+            }
+
+            // 检查图片类型
+            const referenceType = document.querySelector('input[name="reference_type"]:checked');
+            if (!referenceType) {
+                const radioGroup = document.querySelector('input[name="reference_type"]').closest('.form-group');
+                showError(radioGroup, '请选择图片类型');
+                if (!firstErrorElement) firstErrorElement = radioGroup;
+                isValid = false;
+            } else {
+                // 检查对应的必填字段
+                if (referenceType.value === '1') {
+                    // 生成图必填字段
+                    const prompt = document.getElementById('contentPrompt').value.trim();
+                    const model = document.getElementById('mlModel').value.trim();
+                    if (!prompt) {
+                        showError(document.getElementById('contentPrompt'), '请输入生成时所用的提示词');
+                        if (!firstErrorElement) firstErrorElement = document.getElementById('contentPrompt');
+                        isValid = false;
+                    }
+                    if (!model) {
+                        showError(document.getElementById('mlModel'), '请输入使用模型');
+                        if (!firstErrorElement) firstErrorElement = document.getElementById('mlModel');
+                        isValid = false;
+                    }
+                } else {
+                    // 匹配图必填字段
+                    const faceSwitch = document.querySelector('input[name="can_be_used_for_face_switching"]:checked');
+                    if (!faceSwitch) {
+                        const faceSwitchGroup = document.querySelector('input[name="can_be_used_for_face_switching"]').closest('.form-group');
+                        showError(faceSwitchGroup, '请选择是否可被用于换脸');
+                        if (!firstErrorElement) firstErrorElement = faceSwitchGroup;
+                        isValid = false;
+                    }
+                }
+            }
+
+            // 检查风格标签
+            const styleSelections = document.querySelectorAll('#styleTagsContainer .tag-selection');
+            let hasStyleTag = false;
+            styleSelections.forEach(selection => {
+                const selectedTags = selection.querySelectorAll('.tag-item.selected');
+                if (selectedTags.length > 0) {
+                    hasStyleTag = true;
+                }
+            });
+            if (!hasStyleTag) {
+                const styleContainer = document.getElementById('styleTagsContainer').closest('.form-group');
+                showError(styleContainer, '请至少选择一个风格标签');
+                if (!firstErrorElement) firstErrorElement = styleContainer;
+                isValid = false;
+            }
+
+            // 检查场合标签
+            const sceneSelections = document.querySelectorAll('#sceneTagsContainer .tag-selection');
+            let hasSceneTag = false;
+            sceneSelections.forEach(selection => {
+                const selectedTags = selection.querySelectorAll('.tag-item.selected');
+                if (selectedTags.length > 0) {
+                    hasSceneTag = true;
+                }
+            });
+            if (!hasSceneTag) {
+                const sceneContainer = document.getElementById('sceneTagsContainer').closest('.form-group');
+                showError(sceneContainer, '请至少选择一个场合标签');
+                if (!firstErrorElement) firstErrorElement = sceneContainer;
+                isValid = false;
+            }
+
+            // 检查模特数据
+            const modelFields = [
+                { element: document.querySelector('select[name="age"]'), name: '年龄' },
+                { element: document.querySelector('select[name="gender"]'), name: '性别' },
+                { element: document.querySelector('select[name="race"]'), name: '种族' },
+                { element: document.querySelector('select[name="size"]'), name: '体型' }
+            ];
+
+            modelFields.forEach(field => {
+                if (!field.element.value) {
+                    showError(field.element, `请选择${field.name}`);
+                    if (!firstErrorElement) firstErrorElement = field.element;
+                    isValid = false;
+                }
+            });
+
+            // 如果有错误，滚动到第一个错误位置
+            if (!isValid && firstErrorElement) {
+                firstErrorElement.scrollIntoView({ 
+                    behavior: 'smooth', 
+                    block: 'center' 
+                });
+                // 添加高亮效果
+                firstErrorElement.style.transition = 'box-shadow 0.3s ease';
+                firstErrorElement.style.boxShadow = '0 0 0 3px rgba(255, 71, 87, 0.3)';
+                setTimeout(() => {
+                    firstErrorElement.style.boxShadow = '';
+                }, 2000);
+            }
+
+            return isValid;
+        }
+
+        function showError(element, message) {
+            let errorElement = element.nextElementSibling;
+            if (!errorElement || !errorElement.classList.contains('error-message')) {
+                errorElement = document.createElement('div');
+                errorElement.className = 'error-message';
+                element.parentNode.insertBefore(errorElement, element.nextSibling);
+            }
+            errorElement.textContent = message;
+            errorElement.classList.add('show');
+        }
+
         function validateForm() {
+            // 保持原有的实时验证逻辑，但不禁用按钮
+            // 这个函数现在主要用于实时检查，不影响按钮状态
             const submitButton = document.getElementById('submitButton');
             let isValid = true;
-            let errors = [];
 
             // 检查主图
             if (!mainImage) {
                 isValid = false;
-                errors.push('请上传主图');
             }
 
             // 检查图片类型
             const referenceType = document.querySelector('input[name="reference_type"]:checked');
             if (!referenceType) {
                 isValid = false;
-                errors.push('请选择图片类型');
             } else {
                 // 检查对应的必填字段
                 if (referenceType.value === '1') {
                     // 生成图必填字段
-                    const prompt = document.getElementById('gen_content_prompt')?.value.trim();
-                    const model = document.getElementById('gen_ml_model_source')?.value.trim();
+                    const prompt = document.getElementById('contentPrompt').value.trim();
+                    const model = document.getElementById('mlModel').value.trim();
                     if (!prompt || !model) {
                         isValid = false;
-                        errors.push('请填写提示词和模型信息');
                     }
                 } else {
                     // 匹配图必填字段
                     const faceSwitch = document.querySelector('input[name="can_be_used_for_face_switching"]:checked');
                     if (!faceSwitch) {
                         isValid = false;
-                        errors.push('请选择是否可用于换脸');
                     }
                 }
             }
 
             // 检查风格标签
-            const styleSelectedTags = document.querySelectorAll('#style_selected_tags .tag-item');
-            if (styleSelectedTags.length === 0) {
-                isValid = false;
-                errors.push('请选择至少一个风格标签');
-            }
-
-            // 检查场合标签
-            const occasionSelectedTags = document.querySelectorAll('#occasion_selected_tags .tag-item');
-            if (occasionSelectedTags.length === 0) {
-                isValid = false;
-                errors.push('请选择至少一个场合标签');
-            }
-
-            // 检查模特数据
-            const modelFields = ['model_age', 'model_gender', 'model_race', 'model_size'];
-            const missingModelFields = modelFields.filter(field => !document.getElementById(field)?.value);
-            if (missingModelFields.length > 0) {
-                isValid = false;
-                errors.push('请完善模特数据');
-            }
-
-            // 检查服装标注
-            const outfitItems = document.querySelectorAll('.outfit-item');
-            let hasValidOutfit = false;
-            outfitItems.forEach(item => {
-                const productTags = item.querySelectorAll('[id$="_product_selected"] .tag-item');
-                if (productTags.length > 0) {
-                    hasValidOutfit = true;
+            const styleSelections = document.querySelectorAll('#styleTagsContainer .tag-selection');
+            let hasStyleTag = false;
+            styleSelections.forEach(selection => {
+                const selectedTags = selection.querySelectorAll('.tag-item.selected');
+                if (selectedTags.length > 0) {
+                    hasStyleTag = true;
                 }
             });
-            if (!hasValidOutfit) {
+            if (!hasStyleTag) {
                 isValid = false;
-                errors.push('请至少添加一个服装标注');
             }
+        }
+        
 
-            submitButton.disabled = !isValid;
-            
-            // 更新按钮文字显示验证状态
-            if (!isValid && errors.length > 0) {
-                submitButton.title = errors.join('\n');
-            } else {
-                submitButton.title = '点击提交';
+        function saveToLocalStorage() {
+            const formData = {
+                mainImage: mainImage,
+                referenceImages: referenceImages,
+                formValues: {}
+            };
+
+            // 保存表单数据
+            const form = document.getElementById('annotationForm');
+            const formElements = form.querySelectorAll('input, select, textarea');
+            formElements.forEach(element => {
+                if (element.type === 'radio' || element.type === 'checkbox') {
+                    formData.formValues[element.name + '_' + element.value] = element.checked;
+                } else {
+                    formData.formValues[element.name] = element.value;
+                }
+            });
+
+            // 保存选中的标签
+            const selectedTags = document.querySelectorAll('.tag-item.selected');
+            formData.selectedTags = Array.from(selectedTags).map(tag => ({
+                parent: tag.parentNode.id,
+                text: tag.textContent
+            }));
+
+            localStorage.setItem('imageAnnotationData', JSON.stringify(formData));
+        }
+
+        function loadFromLocalStorage() {
+            const savedData = localStorage.getItem('imageAnnotationData');
+            if (!savedData) return;
+
+            try {
+                const data = JSON.parse(savedData);
+                
+                // 恢复主图
+                if (data.mainImage) {
+                    mainImage = data.mainImage;
+                    displayMainImage();
+                }
+
+                // 恢复参考图
+                if (data.referenceImages) {
+                    referenceImages = data.referenceImages;
+                    Object.keys(referenceImages).forEach(type => {
+                        referenceImages[type].forEach((imageData) => {
+                            createImageDescriptionItem(type, imageData);
+                        });
+                    });
+                }
+
+                // 恢复表单数据
+                if (data.formValues) {
+                    Object.keys(data.formValues).forEach(key => {
+                        if (key.includes('_')) {
+                            const [name, value] = key.split('_');
+                            const element = document.querySelector(`input[name="${name}"][value="${value}"]`);
+                            if (element) {
+                                element.checked = data.formValues[key];
+                                if (element.checked && element.type === 'radio') {
+                                    element.dispatchEvent(new Event('change'));
+                                }
+                            }
+                        } else {
+                            const element = document.querySelector(`[name="${key}"]`);
+                            if (element) {
+                                element.value = data.formValues[key];
+                                if (element.tagName === 'SELECT') {
+                                    element.dispatchEvent(new Event('change'));
+                                }
+                            }
+                        }
+                    });
+                }
+
+                // 恢复选中的标签
+                if (data.selectedTags) {
+                    setTimeout(() => {
+                        data.selectedTags.forEach(tagData => {
+                            const parent = document.getElementById(tagData.parent);
+                            if (parent) {
+                                const tag = Array.from(parent.querySelectorAll('.tag-item'))
+                                    .find(t => t.textContent === tagData.text);
+                                if (tag) {
+                                    tag.classList.add('selected');
+                                }
+                            }
+                        });
+                        validateForm();
+                    }, 100);
+                }
+
+            } catch (error) {
+                console.error('Failed to load from localStorage:', error);
             }
         }
 
-        // 收集表单数据
+        function clearLocalStorage() {
+            localStorage.removeItem('imageAnnotationData');
+        }
+
         function collectFormData() {
             const formData = {
+                // 基础信息
                 reference_image_url: mainImage ? mainImage.s3_url : null,
                 reference_type: parseInt(document.querySelector('input[name="reference_type"]:checked')?.value || '0'),
             };
 
-            // 主题
-            const themeSelect = document.getElementById('theme');
-            const selectedThemes = Array.from(themeSelect.selectedOptions).map(option => option.value).filter(v => v);
-            if (selectedThemes.length > 0) {
-                formData.theme_ids = selectedThemes;
+            // 主题信息（如果选择了主题）
+            const themeValue = document.getElementById('theme').value;
+            if (themeValue) {
+                formData.theme_ids = [themeValue];
             }
 
-            // 根据图片类型添加相应字段
+            // 根据图片类型添加对应字段
             if (formData.reference_type === 1) {
-                // 生成图
-                formData.gen_content_prompt = document.getElementById('gen_content_prompt').value;
-                formData.gen_ml_model_source = document.getElementById('gen_ml_model_source').value;
+                // 生成图字段
+                formData.gen_content_prompt = document.getElementById('contentPrompt').value.trim();
+                formData.gen_ml_model_source = document.getElementById('mlModel').value.trim();
                 
-                // 参考图URLs
-                if (referenceImages.prompt_pose?.length > 0) {
-                    formData.gen_pose_images = referenceImages.prompt_pose.map(img => img.s3_url);
-                    formData.gen_pose_description = document.getElementById('gen_pose_description')?.value || null;
-                }
-                if (referenceImages.prompt_outfit?.length > 0) {
-                    formData.gen_outfit_images = referenceImages.prompt_outfit.map(img => img.s3_url);
-                    formData.gen_outfit_description = document.getElementById('gen_outfit_description')?.value || null;
-                }
-                if (referenceImages.prompt_scene?.length > 0) {
-                    formData.gen_scene_images = referenceImages.prompt_scene.map(img => img.s3_url);
-                    formData.gen_scene_description = document.getElementById('gen_scene_description')?.value || null;
-                }
-                if (referenceImages.prompt_composition?.length > 0) {
-                    formData.gen_composition_images = referenceImages.prompt_composition.map(img => img.s3_url);
-                    formData.gen_composition_description = document.getElementById('gen_composition_description')?.value || null;
-                }
-                if (referenceImages.prompt_style?.length > 0) {
-                    formData.gen_style_images = referenceImages.prompt_style.map(img => img.s3_url);
-                    formData.gen_style_description = document.getElementById('gen_style_description')?.value || null;
-                }
-            } else {
-                // 匹配图
-                const productIds = document.getElementById('product_item_ids').value;
+                // 收集各类参考图和描述
+                const referenceTypes = ['pose', 'outfit', 'scene', 'composition', 'style'];
+                referenceTypes.forEach(type => {
+                    const images = referenceImages[type] || [];
+                    if (images.length > 0) {
+                        formData[`gen_${type}_images`] = images.map(img => img.s3_url).filter(url => url);
+                        formData[`gen_${type}_description`] = images.map(img => img.description || '');
+                    }
+                });
+                
+            } else if (formData.reference_type === 2) {
+                // 匹配图字段
+                const productIds = document.getElementById('productIds').value.trim();
                 if (productIds) {
                     formData.product_item_ids = productIds.split(',').map(id => id.trim()).filter(id => id);
                 }
                 
-                formData.pose_description = document.getElementById('pose_description').value || null;
-                formData.scene_description = document.getElementById('scene_description').value || null;
-                formData.can_be_used_for_face_switching = document.querySelector('input[name="can_be_used_for_face_switching"]:checked')?.value === 'true';
-            }
-
-            // 收集标签IDs
-            // 风格标签
-            formData.style_tag_ids = Array.from(document.querySelectorAll('#style_selected_tags .tag-item'))
-                .map(tag => parseInt(tag.getAttribute('data-tag-id')));
-
-            // 场合标签（映射到scene_tag_ids）
-            formData.scene_tag_ids = Array.from(document.querySelectorAll('#occasion_selected_tags .tag-item'))
-                .map(tag => parseInt(tag.getAttribute('data-tag-id')));
-
-            // 模特属性标签
-            const modelAttributes = [];
-            ['model_age', 'model_gender', 'model_race', 'model_size'].forEach(field => {
-                const value = document.getElementById(field)?.value;
-                if (value) {
-                    modelAttributes.push(parseInt(value));
+                const poseDesc = document.getElementById('poseDescription').value.trim();
+                if (poseDesc) {
+                    formData.pose_description = poseDesc;
                 }
-            });
-            formData.model_attribute_tag_ids = modelAttributes;
-
-            // 姿态标签
-            const poseTags = document.getElementById('pose_tags');
-            if (poseTags) {
-                const selectedPoseTags = Array.from(poseTags.selectedOptions)
-                    .map(option => parseInt(option.value))
-                    .filter(v => v);
-                if (selectedPoseTags.length > 0) {
-                    formData.pose_tag_ids = selectedPoseTags;
+                
+                const faceSwitch = document.querySelector('input[name="can_be_used_for_face_switching"]:checked');
+                if (faceSwitch) {
+                    formData.can_be_used_for_face_switching = faceSwitch.value === 'true';
                 }
             }
 
-            // 服装详情
-            formData.outfit_details = [];
-            document.querySelectorAll('.outfit-item').forEach(item => {
-                const outfit = {};
-                
-                // 产品类型标签
-                const productTag = item.querySelector('[id$="_product_selected"] .tag-item');
-                if (productTag) {
-                    outfit.outfit_type_tag_id = parseInt(productTag.getAttribute('data-tag-id'));
-                }
-                
-                // 面料标签
-                const fabricSelect = item.querySelector('[id$="_fabric"]');
-                if (fabricSelect?.value) {
-                    outfit.fabric_tag_id = parseInt(fabricSelect.value);
-                }
-                
-                // 廓形标签
-                const silhouetteTag = item.querySelector('[id$="_silhouette_selected"] .tag-item');
-                if (silhouetteTag) {
-                    outfit.fit_tag_id = parseInt(silhouetteTag.getAttribute('data-tag-id'));
-                }
-                
-                if (Object.keys(outfit).length > 0) {
-                    formData.outfit_details.push(outfit);
-                }
-            });
+            // 收集风格标签ID
+            formData.style_tag_ids = collectSelectedTagIds('#styleTagsContainer');
+            
+            // 收集场合标签ID  
+            formData.scene_tag_ids = collectSelectedTagIds('#sceneTagsContainer');
+
+            // 收集模特属性标签ID
+            formData.model_attribute_tag_ids = collectModelAttributeTagIds();
+
+            // 收集姿态标签ID
+            const poseTagValue = document.getElementById('poseTag').value;
+            if (poseTagValue) {
+                formData.pose_tag_ids = [parseInt(poseTagValue)];
+            }
+
+            // 收集构图标注信息
+            formData.composition_annotation = collectCompositionAnnotation();
+
+            // 收集服装详情
+            formData.outfit_details = collectOutfitDetails();
 
             return formData;
         }
 
-        // 提交表单
+        // 收集选中的标签ID
+        function collectSelectedTagIds(containerSelector) {
+            const tagIds = [];
+            document.querySelectorAll(`${containerSelector} .tag-selection`).forEach(selection => {
+                const selectedTags = Array.from(selection.querySelectorAll('.tag-item.selected'))
+                    .map(tag => parseInt(tag.dataset.tagId))
+                    .filter(id => !isNaN(id));
+                tagIds.push(...selectedTags);
+            });
+            return [...new Set(tagIds)]; // 去重
+        }
+
+        // 收集模特属性标签ID
+        function collectModelAttributeTagIds() {
+            const attributes = [];
+            const attributeSelectors = [
+                'select[name="age"]',
+                'select[name="gender"]', 
+                'select[name="race"]',
+                'select[name="size"]'
+            ];
+            
+            attributeSelectors.forEach(selector => {
+                const element = document.querySelector(selector);
+                if (element && element.value) {
+                    attributes.push(parseInt(element.value));
+                }
+            });
+            
+            return attributes;
+        }
+
+        // 收集构图标注信息
+        function collectCompositionAnnotation() {
+            const annotation = {};
+            const compositionFields = [
+                'camera_type',
+                'camera_angle', 
+                'body_ratio',
+                'character_position'
+            ];
+            
+            compositionFields.forEach(field => {
+                const element = document.querySelector(`select[name="${field}"]`);
+                if (element && element.value) {
+                    annotation[field] = element.value;
+                }
+            });
+            
+            return Object.keys(annotation).length > 0 ? annotation : null;
+        }
+
+        // 收集服装详情
+        function collectOutfitDetails() {
+            const outfitDetails = [];
+            
+            document.querySelectorAll('.outfit-item').forEach(item => {
+                const outfit = {};
+                
+                // 产品类型标签（多级）
+                const productType = {
+                    level1: parseInt(item.querySelector('select[name="product_type_level1"]').value) || null,
+                    level2: parseInt(item.querySelector('select[name="product_type_level2"]').value) || null,
+                    level3: parseInt(item.querySelector('select[name="product_type_level3"]').value) || null
+                };
+                
+                if (productType.level1) {
+                    outfit.product_type_tag_ids = productType;
+                }
+                
+                // 单级标签
+                const singleTags = [
+                    { name: 'fabric_tag_ids', selector: 'select[name="fabric_tag_ids"]' },
+                    { name: 'silhouette_tag_ids', selector: 'select[name="silhouette_tag_ids"]' },
+                    { name: 'color_tag_ids', selector: 'select[name="color_tag_ids"]' }
+                ];
+                
+                singleTags.forEach(tag => {
+                    const element = item.querySelector(tag.selector);
+                    if (element && element.value) {
+                        outfit[tag.name] = parseInt(element.value);
+                    }
+                });
+                
+                // 只添加有实际选择的outfit项
+                if (Object.keys(outfit).length > 0) {
+                    outfitDetails.push(outfit);
+                }
+            });
+            
+            return outfitDetails;
+        }
+
+
         async function handleSubmit(e) {
             e.preventDefault();
             
-            const submitButton = document.getElementById('submitButton');
-            submitButton.disabled = true;
-            submitButton.textContent = '提交中...';
+            // 首先进行表单验证
+            if (!validateFormForSubmit()) {
+                return;
+            }
             
-            showLoading();
+            const submitButton = document.getElementById('submitButton');
+            const originalText = submitButton.textContent;
+            submitButton.disabled = true;
+            submitButton.textContent = '正在提交...';
 
             try {
+                // 收集表单数据
                 const formData = collectFormData();
                 
-                console.log('Submitting form data:', formData);
-                
-                const response = await fetch(`${API_BASE_URL}/reference-images`, {
+                // 验证必填字段
+                const validationError = validateSubmissionData(formData);
+                if (validationError) {
+                    throw new Error(validationError);
+                }
+
+                // 调用创建参考图API
+                const response = await fetch('/api/reference-images', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
                     },
                     body: JSON.stringify(formData)
                 });
 
                 const result = await response.json();
-                
+
                 if (result.success) {
-                    // 显示成功消息
-                    const successMsg = document.getElementById('successMessage');
-                    successMsg.textContent = `标注提交成功！ID: ${result.data.unique_id}`;
-                    successMsg.style.display = 'block';
+                    // 提交成功
+                    showSuccessMessage(result.data);
                     
-                    // 滚动到顶部
-                    document.querySelector('.right-panel').scrollTop = 0;
+                    // 重置表单
+                    await resetFormAfterSuccess();
                     
-                    // 清空表单
-                    resetForm();
+                    // 清除本地存储
+                    clearLocalStorage();
                     
-                    // 3秒后隐藏成功消息
-                    setTimeout(() => {
-                        successMsg.style.display = 'none';
-                    }, 3000);
                 } else {
-                    alert(`提交失败: ${result.error}`);
+                    throw new Error(result.error || '提交失败，请重试');
                 }
+                
             } catch (error) {
-                console.error('Submit error:', error);
-                alert('提交失败，请检查网络连接并重试');
+                console.error('提交失败:', error);
+                showErrorMessage(error.message);
+                
             } finally {
-                hideLoading();
                 submitButton.disabled = false;
-                submitButton.textContent = '提交标注';
+                submitButton.textContent = originalText;
                 validateForm();
             }
         }
 
-        // 重置表单
-        function resetForm() {
+        function validateSubmissionData(formData) {
+            // 检查主图URL
+            if (!formData.reference_image_url) {
+                return '请上传主图';
+            }
+            
+            // 检查图片类型
+            if (!formData.reference_type || (formData.reference_type !== 1 && formData.reference_type !== 2)) {
+                return '请选择图片类型';
+            }
+            
+            // 根据类型检查特定字段
+            if (formData.reference_type === 1) {
+                if (!formData.gen_content_prompt) {
+                    return '生成图必须填写提示词';
+                }
+                if (!formData.gen_ml_model_source) {
+                    return '生成图必须填写使用模型';
+                }
+            } else if (formData.reference_type === 2) {
+                if (formData.can_be_used_for_face_switching === undefined) {
+                    return '匹配图必须选择是否可用于换脸';
+                }
+            }
+            
+            // 检查风格标签
+            if (!formData.style_tag_ids || formData.style_tag_ids.length === 0) {
+                return '请至少选择一个风格标签';
+            }
+    
+            // 检查场合标签
+            if (!formData.scene_tag_ids || formData.scene_tag_ids.length === 0) {
+                return '请至少选择一个场合标签';
+            }
+            
+            // 检查模特属性标签
+            if (!formData.model_attribute_tag_ids || formData.model_attribute_tag_ids.length === 0) {
+                return '请完整填写模特数据标签';
+            }
+            
+            return null; // 验证通过
+        }
+
+        async function resetFormAfterSuccess() {
+            // 重置表单
+            document.getElementById('annotationForm').reset();
+            
             // 清空主图
             mainImage = null;
             document.getElementById('mainImagePreview').innerHTML = '';
@@ -1662,79 +2066,160 @@
             
             // 清空参考图
             referenceImages = {
-                prompt_pose: [],
-                prompt_outfit: [],
-                prompt_scene: [],
-                prompt_composition: [],
-                prompt_style: []
+                pose: [],
+                outfit: [],
+                scene: [],
+                composition: [],
+                style: []
             };
             
-            // 更新计数
-            ['pose', 'outfit', 'scene', 'composition', 'style'].forEach(type => {
-                updateReferenceCount(type);
+            // 清空参考图容器
+            Object.keys(referenceImages).forEach(type => {
+                document.getElementById(`${type}ImagesContainer`).innerHTML = '';
             });
             
-            // 清空预览
-            document.getElementById('allImagesPreview').innerHTML = '';
+            // 重置计数器
+            referenceImageCounters = {
+                pose: 0,
+                outfit: 0,
+                scene: 0,
+                composition: 0,
+                style: 0    
+            };
             
-            // 重置表单
-            document.getElementById('annotationForm').reset();
-            
-            // 清空选中的标签
-            document.querySelectorAll('.tag-wall').forEach(wall => {
-                wall.innerHTML = '';
-            });
-            
-            // 重置级联选择器
-            document.querySelectorAll('select[disabled]').forEach(select => {
-                select.innerHTML = '<option value="">请先选择上级</option>';
-                select.disabled = true;
-            });
-            
-            // 隐藏条件区域
+            // 重置条件区域
             document.getElementById('generatedSection').style.display = 'none';
             document.getElementById('matchingSection').style.display = 'none';
             
-            // 重置服装详情
-            document.getElementById('outfitDetailsContainer').innerHTML = '';
-            outfitCounter = 0;
-            addOutfitDetail(); // 添加默认的第一个
+            // 恢复标签容器初始状态
+            await resetTagContainers();
             
-            validateForm();
+            // 清空服装标注容器
+            document.getElementById('outfitDetailsContainer').innerHTML = '';
+            
+            // 重置计数器
+            outfitCounter = 1;
+            styleTagCounter = 1;
+            sceneTagCounter = 1;
+            
+            // 清除所有错误信息
+            document.querySelectorAll('.error-message').forEach(el => {
+                el.classList.remove('show');
+                el.textContent = '';
+            });
         }
 
-        // 键盘快捷键
-        document.addEventListener('keydown', function(e) {
-            // Ctrl/Cmd + Enter 提交表单
-            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-                const submitButton = document.getElementById('submitButton');
-                if (!submitButton.disabled) {
-                    submitButton.click();
-                }
-            }
+        async function resetTagContainers() {
+            // 恢复风格标签容器初始状态
+            const styleContainer = document.getElementById('styleTagsContainer');
+            styleContainer.innerHTML = `
+                <div class="tag-selection" id="styleTag0">
+                    <select class="form-control" name="style_level1" style="margin-bottom: 10px;">
+                        <option value="">选择一级风格</option>
+                    </select>
+                    <select class="form-control" name="style_level2" style="margin-bottom: 10px;" disabled>
+                        <option value="">选择二级风格</option>
+                    </select>
+                    <div class="tag-wall" id="styleTagWall0"></div>
+                </div>
+            `;
             
-            // Esc 关闭加载动画
-            if (e.key === 'Escape') {
-                hideLoading();
+            // 恢复场合标签容器初始状态
+            const sceneContainer = document.getElementById('sceneTagsContainer');
+            sceneContainer.innerHTML = `
+                <div class="tag-selection" id="sceneTag0">
+                    <select class="form-control" name="scene_level1" style="margin-bottom: 10px;">
+                        <option value="">选择一级场合</option>
+                    </select>
+                    <select class="form-control" name="scene_level2" style="margin-bottom: 10px;" disabled>
+                        <option value="">选择二级场合</option>
+                    </select>
+                    <div class="tag-wall" id="sceneTagWall0"></div>
+                </div>
+            `;
+            
+            // 重新填充标签数据
+            if (tagData.loaded) {
+                initializeTagSelectors();
             }
-        });
+        }
+        function showSuccessMessage(responseData) {
+            // 创建成功提示模态框
+            const modal = document.createElement('div');
+            modal.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background-color: rgba(0,0,0,0.5);
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                z-index: 10000;
+            `;
+            
+            modal.innerHTML = `
+                <div style="background: white; padding: 30px; border-radius: 12px; text-align: center; max-width: 400px;">
+                    <div style="font-size: 48px; margin-bottom: 15px;">✅</div>
+                    <h3 style="color: #28a745; margin-bottom: 15px;">提交成功！</h3>
+                    <p style="color: #666; margin-bottom: 20px;">
+                        标注数据已成功保存<br>
+                        记录ID: ${responseData.unique_id}
+                    </p>
+                    <button onclick="this.closest('div').parentNode.remove()" 
+                            style="background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer;">
+                        确定
+                    </button>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            // 3秒后自动关闭
+            setTimeout(() => {
+                if (modal.parentNode) {
+                    modal.remove();
+                }
+            }, 3000);
+        }
 
-        // 页面离开提醒
-        window.addEventListener('beforeunload', function(e) {
-            if (mainImage || Object.values(referenceImages).some(arr => arr.length > 0)) {
-                e.preventDefault();
-                e.returnValue = '您有未保存的数据，确定要离开吗？';
-            }
-        });
-
-        // 错误处理
-        window.addEventListener('error', function(e) {
-            console.error('Global error:', e);
-            hideLoading();
-        });
-
-        // Promise错误处理
-        window.addEventListener('unhandledrejection', function(e) {
-            console.error('Unhandled promise rejection:', e);
-            hideLoading();
-        });
+        function showErrorMessage(errorMessage) {
+            // 创建错误提示模态框
+            const modal = document.createElement('div');
+            modal.style.cssText = `
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background-color: rgba(0,0,0,0.5);
+                display: flex;
+                justify-content: center;
+                align-items: center;
+                z-index: 10000;
+            `;
+            
+            modal.innerHTML = `
+                <div style="background: white; padding: 30px; border-radius: 12px; text-align: center; max-width: 500px;">
+                    <div style="font-size: 48px; margin-bottom: 15px;">❌</div>
+                    <h3 style="color: #dc3545; margin-bottom: 15px;">提交失败</h3>
+                    <p style="color: #666; margin-bottom: 20px; word-break: break-word;">
+                        ${errorMessage}
+                    </p>
+                    <button onclick="this.closest('div').parentNode.remove()" 
+                            style="background: #dc3545; color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer;">
+                        确定
+                    </button>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+        }
+            
+        // 表单输入监听 - 移除validateForm调用，因为按钮现在始终可点击
+        document.addEventListener('input', saveToLocalStorage);
+        document.addEventListener('change', saveToLocalStorage);
+    </script>
+</body>
+</html>

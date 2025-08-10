@@ -21,6 +21,6 @@ gunicorn==21.2.0
 Pillow==10.0.0
 
 # ML/Embeddings (Optional - already installed)
-# sentence-transformers==5.1.0
-# numpy==1.26.0  # Automatically installed with sentence-transformers
-# torch==2.8.0   # Automatically installed with sentence-transformers
+sentence-transformers==5.1.0
+#numpy==1.26.0  # Automatically installed with sentence-transformers
+#torch==2.8.0   # Automatically installed with sentence-transformers
