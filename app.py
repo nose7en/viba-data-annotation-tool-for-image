@@ -1,4 +1,4 @@
-# app.py - 完整的最终版Flask应用
+# app.py - 修复标签类型名称的Flask应用
 from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
 import os
@@ -21,8 +21,9 @@ from s3_uploader import S3Uploader
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = Flask(__name__)
-CORS(app)
+app = Flask(__name__,
+            static_folder='static',      # 静态文件文件夹             
+            template_folder='templates')  # 模板文件夹CORS(app) CORS(app)
 
 # 配置类
 class Config:
@@ -123,12 +124,12 @@ class Database:
 
 db = Database()
 
-# 标签类型定义
+# 标签类型定义 - 修正为数据库中实际的标签类型名称
 TAG_TYPES = {
     # 多级标签（4级树状结构）
     'multi_level': ['occasion', 'silhouette', 'product_type', 'style'],
     
-    # 单级标签（扁平结构）
+    # 单级标签（扁平结构）- 修正标签类型名称
     'single_level': [
         'season', 'pose', 'model_race', 'composition_angle',
         'composition_shot', 'model_attribute', 'model_age', 
@@ -160,11 +161,9 @@ def cache_decorator(expiration=300):
 
 # ==================== API路由 ====================
 
-# 这个 @app.route('/') 定义了网站的根路径 "/"
 @app.route('/')
 def index():
     return render_template('index.html')
-
 
 @app.route('/api/status')
 def api_status():
@@ -176,6 +175,7 @@ def api_status():
         'health_check': '/api/health',
         'timestamp': datetime.now().isoformat()
     })
+
 # ==================== 主题相关API ====================
 
 @app.route('/api/themes', methods=['GET'])
@@ -474,7 +474,7 @@ def create_reference_image():
         
         # 必填字段验证
         required_fields = ['reference_image_url', 'reference_type', 'style_tag_ids', 
-                          'scene_tag_ids', 'model_attribute_tag_ids', 'outfit_details']
+                          'occasion_tag_ids', 'model_attribute_tag_ids', 'outfit_details']
         
         for field in required_fields:
             if field not in data:
@@ -539,7 +539,7 @@ def create_reference_image():
             ) RETURNING id, unique_id
         """
         
-        # 准备参数
+        # 准备参数 - 修正标签收集逻辑
         params = [
             data['reference_image_url'],
             data['reference_type'],
@@ -560,7 +560,8 @@ def create_reference_image():
             data.get('pose_description'),
             data.get('scene_description'),
             enriched_tag_ids.get('pose', []),
-            enriched_tag_ids.get('scene', []) + enriched_tag_ids.get('occasion', []),
+            # scene_tag_ids 应该包含 occasion 标签
+            enriched_tag_ids.get('occasion', []),
             enriched_tag_ids.get('outfit_type', []) + enriched_tag_ids.get('product_type', []),
             list(set(enriched_tag_ids.get('model_gender', []) + 
                      enriched_tag_ids.get('model_age', []) + 
@@ -873,26 +874,6 @@ def generate_embeddings_for_reference(data):
     
     return embeddings
 
-def collect_all_tag_ids(data):
-    """收集所有标签ID"""
-    all_tag_ids = set()
-    
-    tag_fields = ['style_tag_ids', 'scene_tag_ids', 'occasion_tag_ids',
-                  'model_attribute_tag_ids', 'pose_tag_ids', 'fabric_tag_ids', 
-                  'fit_tag_ids', 'outfit_type_tag_ids', 'product_type_tag_ids',
-                  'silhouette_tag_ids']
-    
-    for field in tag_fields:
-        if field in data and data[field]:
-            all_tag_ids.update(data[field])
-    
-    for outfit in data.get('outfit_details', []):
-        for key in ['outfit_type_tag_id', 'fabric_tag_id', 'fit_tag_id', 'color_tag_id']:
-            if key in outfit and outfit[key]:
-                all_tag_ids.add(outfit[key])
-    
-    return all_tag_ids
-
 def validate_tag_ids(tag_ids):
     """验证标签ID是否存在"""
     if not tag_ids:
@@ -906,37 +887,6 @@ def validate_tag_ids(tag_ids):
     valid_tag_ids = {tag['id'] for tag in valid_tags}
     
     return tag_ids - valid_tag_ids
-
-def enrich_with_parent_tags(tag_ids):
-    """添加所有父级标签"""
-    if not tag_ids:
-        return {}
-    
-    query = """
-        WITH RECURSIVE tag_hierarchy AS (
-            SELECT id, tag_type, parent_tag_id
-            FROM viba.tag_definitions
-            WHERE id = ANY(%s)
-            
-            UNION
-            
-            SELECT t.id, t.tag_type, t.parent_tag_id
-            FROM viba.tag_definitions t
-            JOIN tag_hierarchy th ON t.id = th.parent_tag_id
-        )
-        SELECT DISTINCT id, tag_type FROM tag_hierarchy
-    """
-    
-    all_tags = db.execute_query(query, (list(tag_ids),))
-    
-    enriched = {}
-    for tag in all_tags:
-        tag_type = tag['tag_type']
-        if tag_type not in enriched:
-            enriched[tag_type] = []
-        enriched[tag_type].append(tag['id'])
-    
-    return enriched
 
 # ==================== 错误处理 ====================
 
