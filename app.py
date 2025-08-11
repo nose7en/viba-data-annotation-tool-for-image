@@ -1,4 +1,4 @@
-# app.py - 完整的最终版Flask应用
+# app.py - 修复标签类型名称的Flask应用
 from flask import Flask, request, jsonify, render_template
 from flask_cors import CORS
 import os
@@ -21,8 +21,9 @@ from s3_uploader import S3Uploader
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-app = Flask(__name__)
-CORS(app)
+app = Flask(__name__,
+            static_folder='static',      # 静态文件文件夹             
+            template_folder='templates')  # 模板文件夹CORS(app) CORS(app)
 
 # 配置类
 class Config:
@@ -123,22 +124,32 @@ class Database:
 
 db = Database()
 
-# 标签类型定义
-TAG_TYPES = {
-    # 多级标签（4级树状结构）
-    'multi_level': ['occasion', 'silhouette', 'product_type', 'style'],
-    
-    # 单级标签（扁平结构）
-    'single_level': [
-        'season', 'pose', 'model_race', 'composition_angle',
-        'composition_shot', 'model_attribute', 'model_age', 
-        'gender', 'fabric', 'color', 'composition_position',
-        'model_size', 'composition_bodyratio', 'model_gender'
-    ]
-}
+# 导入配置模块
+from tag_config import (
+    TAG_TYPES,
+    FIELD_MAPPING,
+    MODEL_ATTRIBUTE_FIELDS,
+    COMPOSITION_FIELDS,
+    SPECIAL_TAG_TYPES,
+    get_all_tag_types,
+    is_multi_level,
+    is_single_level,
+    get_db_field_name,
+    validate_config,
+    export_config_for_frontend
+)
 
-# 所有标签类型
-ALL_TAG_TYPES = TAG_TYPES['multi_level'] + TAG_TYPES['single_level']
+# 在应用启动时验证配置
+def validate_tag_config():
+    """验证标签配置"""
+    is_valid, errors = validate_config()
+    if not is_valid:
+        logger.error(f"标签配置验证失败: {', '.join(errors)}")
+        raise ValueError("标签配置无效")
+    logger.info("标签配置验证通过")
+
+# 获取所有标签类型（使用配置）
+ALL_TAG_TYPES = get_all_tag_types()
 
 # 缓存装饰器
 def cache_decorator(expiration=300):
@@ -160,11 +171,9 @@ def cache_decorator(expiration=300):
 
 # ==================== API路由 ====================
 
-# 这个 @app.route('/') 定义了网站的根路径 "/"
 @app.route('/')
 def index():
     return render_template('index.html')
-
 
 @app.route('/api/status')
 def api_status():
@@ -176,6 +185,7 @@ def api_status():
         'health_check': '/api/health',
         'timestamp': datetime.now().isoformat()
     })
+
 # ==================== 主题相关API ====================
 
 @app.route('/api/themes', methods=['GET'])
@@ -200,6 +210,22 @@ def get_themes():
         }), 500
 
 # ==================== 标签相关API ====================
+@app.route('/api/config/tags', methods=['GET'])
+def get_tag_config():
+    """获取标签配置信息（供前端使用）"""
+    try:
+        config = export_config_for_frontend()
+        return jsonify({
+            'success': True,
+            'data': config
+        })
+    except Exception as e:
+        logger.error(f"Error getting tag config: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
 
 @app.route('/api/tags/all', methods=['GET'])
 @cache_decorator(expiration=7200)  # 缓存2小时
@@ -240,7 +266,7 @@ def get_all_tags():
                 tags_by_type[tag_type] = []
             tags_by_type[tag_type].append(tag)
         
-        # 分别处理多级和单级标签
+        # 分别处理多级和单级标签（使用配置）
         result = {
             'multi_level': {},
             'single_level': {},
@@ -259,6 +285,9 @@ def get_all_tags():
         for tag_type in TAG_TYPES['single_level']:
             if tag_type in tags_by_type:
                 result['single_level'][tag_type] = build_flat_structure(tags_by_type[tag_type])
+        
+        # 添加特殊标签类型信息
+        result['special_types'] = SPECIAL_TAG_TYPES
         
         # 统计信息
         stats = {
@@ -314,8 +343,8 @@ def get_tags_by_type(tag_type):
         
         tags = db.execute_query(query, (tag_type,))
         
-        # 根据类型返回不同结构
-        if tag_type in TAG_TYPES['multi_level']:
+        # 根据配置确定类型并返回不同结构
+        if is_multi_level(tag_type):
             result = build_tree_structure(tags)
         else:
             result = build_flat_structure(tags)
@@ -323,7 +352,7 @@ def get_tags_by_type(tag_type):
         return jsonify({
             'success': True,
             'data': result,
-            'type': 'multi_level' if tag_type in TAG_TYPES['multi_level'] else 'single_level',
+            'type': 'multi_level' if is_multi_level(tag_type) else 'single_level',
             'count': len(tags)
         })
     except Exception as e:
@@ -464,17 +493,209 @@ def upload_batch_images():
         logger.error(f"Batch upload error: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
+# ==================== 辅助函数 ====================
+
+def collect_all_tag_ids(data):
+    """
+    从请求数据中收集所有标签ID
+    保持原始分组，用于后续的父级补充
+    
+    Args:
+        data: 请求数据字典
+    
+    Returns:
+        所有标签ID的集合（用于验证）
+    """
+    all_tag_ids = set()
+    
+    # 收集各种标签ID
+    tag_fields = [
+        'style_tag_ids',
+        'occasion_tag_ids', 
+        'pose_tag_ids',
+        'model_attribute_tag_ids',
+        'composition_tag_ids'
+    ]
+    
+    for field in tag_fields:
+        if field in data and data[field]:
+            if isinstance(data[field], list):
+                all_tag_ids.update(data[field])
+            else:
+                all_tag_ids.add(data[field])
+    
+    # 收集服装详情中的标签
+    if 'outfit_details' in data and data['outfit_details']:
+        for outfit in data['outfit_details']:
+            if isinstance(outfit, dict):
+                # 产品类型标签
+                if 'product_type_tag_ids' in outfit and outfit['product_type_tag_ids']:
+                    all_tag_ids.update(outfit['product_type_tag_ids'])
+                
+                # 材质标签
+                if 'fabric_tag_id' in outfit and outfit['fabric_tag_id']:
+                    all_tag_ids.add(outfit['fabric_tag_id'])
+                
+                # 版型标签
+                if 'silhouette_tag_id' in outfit and outfit['silhouette_tag_id']:
+                    all_tag_ids.add(outfit['silhouette_tag_id'])
+                    
+                # 颜色标签
+                if 'color_tag_id' in outfit and outfit['color_tag_id']:
+                    all_tag_ids.add(outfit['color_tag_id'])
+    
+    # 过滤掉None和无效值
+    return {tag_id for tag_id in all_tag_ids if tag_id is not None}
+
+
+def enrich_with_parent_tags(tag_ids_by_field):
+    """
+    为每组标签ID添加所有父级标签ID
+    确保存储的是完整的标签层级链
+    
+    Args:
+        tag_ids_by_field: 按字段分组的标签ID字典
+                         如: {'style_tag_ids': [3, 4], 'occasion_tag_ids': [10, 11]}
+    
+    Returns:
+        enriched_dict: 包含所有父级的标签ID字典
+                      如: {'style_tag_ids': [1, 2, 3, 4], 'occasion_tag_ids': [8, 9, 10, 11]}
+    """
+    if not tag_ids_by_field:
+        return {}
+    
+    enriched = {}
+    
+    for field_name, tag_ids in tag_ids_by_field.items():
+        if not tag_ids:
+            enriched[field_name] = []
+            continue
+        
+        # 对于每个标签ID，获取其完整的父级链
+        all_ids_with_parents = set()
+        
+        for tag_id in tag_ids:
+            try:
+                # 查询该标签及其所有父级
+                query = """
+                    WITH RECURSIVE tag_path AS (
+                        -- 起始：选择当前标签
+                        SELECT id, parent_tag_id, tag_type, level
+                        FROM viba.tag_definitions
+                        WHERE id = %s AND is_active = TRUE
+                        
+                        UNION
+                        
+                        -- 递归：选择所有父级
+                        SELECT t.id, t.parent_tag_id, t.tag_type, t.level
+                        FROM viba.tag_definitions t
+                        INNER JOIN tag_path tp ON t.id = tp.parent_tag_id
+                        WHERE t.is_active = TRUE
+                    )
+                    SELECT DISTINCT id FROM tag_path
+                """
+                
+                results = db.execute_query(query, (tag_id,))
+                all_ids_with_parents.update([r['id'] for r in results])
+                
+            except Exception as e:
+                logger.warning(f"Failed to get parent tags for {tag_id}: {str(e)}")
+                # 至少添加原始标签
+                all_ids_with_parents.add(tag_id)
+        
+        enriched[field_name] = list(all_ids_with_parents)
+    
+    return enriched
+
+
+def prepare_tag_data_for_storage(data):
+    """
+    准备标签数据用于存储
+    处理字段映射和标签分组
+    
+    重要映射：
+    - occasion_tag_ids (前端) -> scene_tag_ids (数据库)
+    - product_type_tag_ids (前端) -> outfit_type_tag_ids (数据库)  
+    - silhouette_tag_ids (前端) -> fit_tag_ids (数据库)
+    - model_race/age/size/gender (前端) -> model_attribute_tag_ids (数据库)
+    
+    Args:
+        data: 请求数据
+    
+    Returns:
+        标准化的标签数据字典
+    """
+    tag_data = {}
+    
+     # 处理风格标签
+    if 'style_tag_ids' in data and data['style_tag_ids']:
+        db_field = get_db_field_name('style_tag_ids')
+        tag_data[db_field] = data['style_tag_ids'] if isinstance(data['style_tag_ids'], list) else [data['style_tag_ids']]
+    
+    # 处理场合标签
+    if 'occasion_tag_ids' in data and data['occasion_tag_ids']:
+        db_field = get_db_field_name('occasion_tag_ids')  # 将返回 'scene_tag_ids'
+        tag_data[db_field] = data['occasion_tag_ids'] if isinstance(data['occasion_tag_ids'], list) else [data['occasion_tag_ids']]
+    
+    # 处理姿势标签
+    if 'pose_tag_ids' in data and data['pose_tag_ids']:
+        db_field = get_db_field_name('pose_tag_ids')
+        tag_data[db_field] = data['pose_tag_ids'] if isinstance(data['pose_tag_ids'], list) else [data['pose_tag_ids']]
+    
+    # 处理模特属性标签
+    if 'model_attribute_tag_ids' in data and data['model_attribute_tag_ids']:
+        tag_data['model_attribute_tag_ids'] = data['model_attribute_tag_ids'] if isinstance(data['model_attribute_tag_ids'], list) else [data['model_attribute_tag_ids']]
+    
+    # 处理服装详情中的标签
+    if 'outfit_details' in data and data['outfit_details']:
+        outfit_type_ids = []
+        fabric_ids = []
+        silhouette_ids = []
+        
+        for outfit in data['outfit_details']:
+            if isinstance(outfit, dict):
+                # 产品类型标签
+                if 'product_type_tag_ids' in outfit and outfit['product_type_tag_ids']:
+                    outfit_type_ids.extend(outfit['product_type_tag_ids'])
+                
+                # 材质标签
+                if 'fabric_tag_id' in outfit and outfit['fabric_tag_id']:
+                    fabric_ids.append(outfit['fabric_tag_id'])
+                
+                # 版型/廓形标签（现在是数组）
+                if 'silhouette_tag_id' in outfit and outfit['silhouette_tag_id']:
+                    if isinstance(outfit['silhouette_tag_id'], list):
+                        silhouette_ids.extend(outfit['silhouette_tag_id'])
+                    else:
+                        silhouette_ids.append(outfit['silhouette_tag_id'])
+        
+        # 使用配置中的映射
+        if outfit_type_ids:
+            db_field = get_db_field_name('product_type_tag_ids')  # 返回 'outfit_type_tag_ids'
+            tag_data[db_field] = list(set(outfit_type_ids))
+        if fabric_ids:
+            db_field = get_db_field_name('fabric_tag_ids')
+            tag_data[db_field] = list(set(fabric_ids))
+        if silhouette_ids:
+            db_field = get_db_field_name('silhouette_tag_ids')  # 返回 'fit_tag_ids'
+            tag_data[db_field] = list(set(silhouette_ids))
+    
+    return tag_data
+
+
+
 # ==================== 参考图管理API ====================
+# ==================== 修改后的 create_reference_image 函数 ====================
 
 @app.route('/api/reference-images', methods=['POST'])
 def create_reference_image():
     """创建参考图标注"""
     try:
         data = request.json
+        logger.info(f"Received data keys: {list(data.keys())}")
         
         # 必填字段验证
-        required_fields = ['reference_image_url', 'reference_type', 'style_tag_ids', 
-                          'scene_tag_ids', 'model_attribute_tag_ids', 'outfit_details']
+        required_fields = ['reference_image_url', 'reference_type']
         
         for field in required_fields:
             if field not in data:
@@ -510,8 +731,13 @@ def create_reference_image():
                     'error': f'Invalid tag IDs: {list(invalid_tags)}'
                 }), 400
         
+        # 准备标签数据（处理字段映射）
+        tag_data = prepare_tag_data_for_storage(data)
+        
         # 添加父级标签
-        enriched_tag_ids = enrich_with_parent_tags(all_tag_ids)
+        enriched_tags = enrich_with_parent_tags(tag_data)
+        
+        logger.info(f"Enriched tags: {list(enriched_tags.keys())}")
         
         # 构建插入查询
         insert_query = """
@@ -539,10 +765,13 @@ def create_reference_image():
             ) RETURNING id, unique_id
         """
         
-        # 准备参数
+        # 准备参数 - 使用正确的映射
         params = [
+            # 基础字段
             data['reference_image_url'],
             data['reference_type'],
+            
+            # 生成图相关字段
             data.get('gen_pose_images', []),
             data.get('gen_pose_description'),
             data.get('gen_outfit_images', []),
@@ -555,21 +784,25 @@ def create_reference_image():
             data.get('gen_style_description'),
             data.get('gen_content_prompt'),
             data.get('gen_ml_model_source'),
+            
+            # 匹配图相关字段
             data.get('product_item_ids', []),
             data.get('can_be_used_for_face_switching'),
             data.get('pose_description'),
             data.get('scene_description'),
-            enriched_tag_ids.get('pose', []),
-            enriched_tag_ids.get('scene', []) + enriched_tag_ids.get('occasion', []),
-            enriched_tag_ids.get('outfit_type', []) + enriched_tag_ids.get('product_type', []),
-            list(set(enriched_tag_ids.get('model_gender', []) + 
-                     enriched_tag_ids.get('model_age', []) + 
-                     enriched_tag_ids.get('model_race', []) + 
-                     enriched_tag_ids.get('model_size', []) +
-                     enriched_tag_ids.get('model_attribute', []))),
-            enriched_tag_ids.get('fabric', []),
-            enriched_tag_ids.get('fit', []) + enriched_tag_ids.get('silhouette', []),
+            
+            # 标签数组字段 - 使用enriched_tags中的映射后数据
+            enriched_tags.get('pose_tag_ids', []),
+            enriched_tags.get('scene_tag_ids', []),  # occasion_tag_ids 映射到这里
+            enriched_tags.get('outfit_type_tag_ids', []),  # product_type_tag_ids 映射到这里
+            enriched_tags.get('model_attribute_tag_ids', []),  # 四个模特属性合并
+            enriched_tags.get('fabric_tag_ids', []),
+            enriched_tags.get('fit_tag_ids', []),  # silhouette_tag_ids 映射到这里
+            
+            # 服装详情JSON
             Json(data.get('outfit_details', [])),
+            
+            # 向量嵌入字段
             embeddings.get('gen_content_embedding'),
             embeddings.get('gen_pose_embedding'),
             embeddings.get('gen_outfit_embedding'),
@@ -594,7 +827,7 @@ def create_reference_image():
         
         # 清除缓存
         if redis_client:
-            redis_client.delete('get_themes:*')
+            redis_client.delete('get_reference_images:*')
         
         return jsonify({
             'success': True,
@@ -607,6 +840,8 @@ def create_reference_image():
         logger.error(f"Error creating reference image: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
+
+        
 @app.route('/api/reference-images/<unique_id>', methods=['GET'])
 def get_reference_image(unique_id):
     """获取单个参考图详情"""
@@ -873,26 +1108,6 @@ def generate_embeddings_for_reference(data):
     
     return embeddings
 
-def collect_all_tag_ids(data):
-    """收集所有标签ID"""
-    all_tag_ids = set()
-    
-    tag_fields = ['style_tag_ids', 'scene_tag_ids', 'occasion_tag_ids',
-                  'model_attribute_tag_ids', 'pose_tag_ids', 'fabric_tag_ids', 
-                  'fit_tag_ids', 'outfit_type_tag_ids', 'product_type_tag_ids',
-                  'silhouette_tag_ids']
-    
-    for field in tag_fields:
-        if field in data and data[field]:
-            all_tag_ids.update(data[field])
-    
-    for outfit in data.get('outfit_details', []):
-        for key in ['outfit_type_tag_id', 'fabric_tag_id', 'fit_tag_id', 'color_tag_id']:
-            if key in outfit and outfit[key]:
-                all_tag_ids.add(outfit[key])
-    
-    return all_tag_ids
-
 def validate_tag_ids(tag_ids):
     """验证标签ID是否存在"""
     if not tag_ids:
@@ -906,37 +1121,6 @@ def validate_tag_ids(tag_ids):
     valid_tag_ids = {tag['id'] for tag in valid_tags}
     
     return tag_ids - valid_tag_ids
-
-def enrich_with_parent_tags(tag_ids):
-    """添加所有父级标签"""
-    if not tag_ids:
-        return {}
-    
-    query = """
-        WITH RECURSIVE tag_hierarchy AS (
-            SELECT id, tag_type, parent_tag_id
-            FROM viba.tag_definitions
-            WHERE id = ANY(%s)
-            
-            UNION
-            
-            SELECT t.id, t.tag_type, t.parent_tag_id
-            FROM viba.tag_definitions t
-            JOIN tag_hierarchy th ON t.id = th.parent_tag_id
-        )
-        SELECT DISTINCT id, tag_type FROM tag_hierarchy
-    """
-    
-    all_tags = db.execute_query(query, (list(tag_ids),))
-    
-    enriched = {}
-    for tag in all_tags:
-        tag_type = tag['tag_type']
-        if tag_type not in enriched:
-            enriched[tag_type] = []
-        enriched[tag_type].append(tag['id'])
-    
-    return enriched
 
 # ==================== 错误处理 ====================
 
