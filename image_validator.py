@@ -11,7 +11,7 @@ class ImageValidator:
     
     # 竖屏图片的分辨率要求
     MIN_WIDTH = 1080
-    MIN_HEIGHT = 1920
+    MIN_HEIGHT = 1440
     MAX_WIDTH = 2160
     MAX_HEIGHT = 3840
     
@@ -53,20 +53,6 @@ class ImageValidator:
             
             # 获取尺寸
             width, height = img.size
-            
-            # 检查是否为竖屏
-            if width >= height:
-                return {
-                    'valid': False,
-                    'error': '请上传竖屏图片（高度应大于宽度）'
-                }
-            
-            # 检查最小分辨率
-            if width < cls.MIN_WIDTH or height < cls.MIN_HEIGHT:
-                return {
-                    'valid': False,
-                    'error': f'竖屏图片分辨率过低，最小要求为{cls.MIN_WIDTH}×{cls.MIN_HEIGHT}'
-                }
             
             # 检查最大分辨率
             if width > cls.MAX_WIDTH or height > cls.MAX_HEIGHT:
