@@ -11,6 +11,7 @@ import redis
 import json
 import hashlib
 from functools import wraps
+import uuid
 
 # 导入自定义模块
 from image_validator import ImageValidator
@@ -23,7 +24,8 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__,
             static_folder='static',      # 静态文件文件夹             
-            template_folder='templates')  # 模板文件夹CORS(app) CORS(app)
+            template_folder='templates')  # 模板文件夹CORS(app) 
+CORS(app)
 
 # 配置类
 class Config:
@@ -152,6 +154,7 @@ def validate_tag_config():
 ALL_TAG_TYPES = get_all_tag_types()
 
 # 缓存装饰器
+# 修复缓存装饰器
 def cache_decorator(expiration=300):
     def decorator(f):
         @wraps(f)
@@ -159,12 +162,41 @@ def cache_decorator(expiration=300):
             if not redis_client:
                 return f(*args, **kwargs)
             
-            cache_key = f"{f.__name__}:{str(args)}:{str(kwargs)}"
-            cached = redis_client.get(cache_key)
-            if cached:
-                return json.loads(cached)
+            # 生成缓存键
+            import hashlib
+            key_data = f"{f.__module__}.{f.__name__}:{str(args)}:{str(sorted(kwargs.items()))}"
+            cache_key = f"cache:{hashlib.md5(key_data.encode()).hexdigest()}"
+            
+            try:
+                cached = redis_client.get(cache_key)
+                if cached:
+                    # 确保返回的是字典，不是Response对象
+                    cached_data = json.loads(cached)
+                    if isinstance(cached_data, dict):
+                        return cached_data
+                    else:
+                        # 如果缓存的数据格式不对，删除缓存
+                        redis_client.delete(cache_key)
+            except Exception as e:
+                logger.warning(f"Cache get error: {e}")
+                # 删除有问题的缓存
+                try:
+                    redis_client.delete(cache_key)
+                except:
+                    pass
+            
+            # 执行原函数
             result = f(*args, **kwargs)
-            redis_client.setex(cache_key, expiration, json.dumps(result, default=str))
+            
+            # 只缓存成功的字典结果
+            if isinstance(result, tuple) and len(result) == 2:
+                response_data, status_code = result
+                if status_code == 200 and isinstance(response_data.get_json(), dict):
+                    try:
+                        redis_client.setex(cache_key, expiration, json.dumps(response_data.get_json()))
+                    except Exception as e:
+                        logger.warning(f"Cache set error: {e}")
+            
             return result
         return wrapper
     return decorator
@@ -202,7 +234,7 @@ def get_themes():
         return jsonify({
             'success': True,
             'data': themes
-        })
+        }), 200 
     except Exception as e:
         return jsonify({
             'success': False,
@@ -218,7 +250,7 @@ def get_tag_config():
         return jsonify({
             'success': True,
             'data': config
-        })
+        }), 200
     except Exception as e:
         logger.error(f"Error getting tag config: {str(e)}")
         return jsonify({
@@ -228,7 +260,7 @@ def get_tag_config():
 
 
 @app.route('/api/tags/all', methods=['GET'])
-@cache_decorator(expiration=7200)  # 缓存2小时
+@cache_decorator(expiration=600)  # 缓存2小时
 def get_all_tags():
     """一次性获取所有标签，区分多级和单级"""
     try:
@@ -307,60 +339,60 @@ def get_all_tags():
             'error': str(e)
         }), 500
 
-@app.route('/api/tags/<tag_type>', methods=['GET'])
-@cache_decorator(expiration=7200)
-def get_tags_by_type(tag_type):
-    """获取特定类型的标签"""
-    try:
-        if tag_type not in ALL_TAG_TYPES:
-            return jsonify({
-                'success': False,
-                'error': f'Invalid tag type. Valid types are: {", ".join(ALL_TAG_TYPES)}'
-            }), 400
+# @app.route('/api/tags/<tag_type>', methods=['GET'])
+# @cache_decorator(expiration=7200)
+# def get_tags_by_type(tag_type):
+#     """获取特定类型的标签"""
+#     try:
+#         if tag_type not in ALL_TAG_TYPES:
+#             return jsonify({
+#                 'success': False,
+#                 'error': f'Invalid tag type. Valid types are: {", ".join(ALL_TAG_TYPES)}'
+#             }), 400
         
-        query = """
-            SELECT 
-                id,
-                tag_name,
-                tag_name_cn,
-                parent_tag_id,
-                level,
-                level1_code,
-                level2_code,
-                level3_code,
-                level4_code,
-                full_code,
-                is_leaf,
-                attributes
-            FROM viba.tag_definitions
-            WHERE tag_type = %s AND is_active = TRUE
-            ORDER BY level, 
-                     COALESCE(level1_code, '00'),
-                     COALESCE(level2_code, '00'),
-                     COALESCE(level3_code, '00'),
-                     COALESCE(level4_code, '00000000')
-        """
+#         query = """
+#             SELECT 
+#                 id,
+#                 tag_name,
+#                 tag_name_cn,
+#                 parent_tag_id,
+#                 level,
+#                 level1_code,
+#                 level2_code,
+#                 level3_code,
+#                 level4_code,
+#                 full_code,
+#                 is_leaf,
+#                 attributes
+#             FROM viba.tag_definitions
+#             WHERE tag_type = %s AND is_active = TRUE
+#             ORDER BY level, 
+#                      COALESCE(level1_code, '00'),
+#                      COALESCE(level2_code, '00'),
+#                      COALESCE(level3_code, '00'),
+#                      COALESCE(level4_code, '00000000')
+#         """
         
-        tags = db.execute_query(query, (tag_type,))
+#         tags = db.execute_query(query, (tag_type,))
         
-        # 根据配置确定类型并返回不同结构
-        if is_multi_level(tag_type):
-            result = build_tree_structure(tags)
-        else:
-            result = build_flat_structure(tags)
+#         # 根据配置确定类型并返回不同结构
+#         if is_multi_level(tag_type):
+#             result = build_tree_structure(tags)
+#         else:
+#             result = build_flat_structure(tags)
         
-        return jsonify({
-            'success': True,
-            'data': result,
-            'type': 'multi_level' if is_multi_level(tag_type) else 'single_level',
-            'count': len(tags)
-        })
-    except Exception as e:
-        logger.error(f"Error getting tags for type {tag_type}: {str(e)}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
+#         return jsonify({
+#             'success': True,
+#             'data': result,
+#             'type': 'multi_level' if is_multi_level(tag_type) else 'single_level',
+#             'count': len(tags)
+#         })
+#     except Exception as e:
+#         logger.error(f"Error getting tags for type {tag_type}: {str(e)}")
+#         return jsonify({
+#             'success': False,
+#             'error': str(e)
+#         }), 500
 
 # ==================== 图片上传API ====================
 
@@ -433,6 +465,8 @@ def upload_image():
     except Exception as e:
         logger.error(f"Upload error: {str(e)}")
         return jsonify({'success': False, 'error': str(e)}), 500
+
+
 
 @app.route('/api/upload-batch', methods=['POST'])
 def upload_batch_images():
@@ -538,7 +572,11 @@ def collect_all_tag_ids(data):
                 
                 # 版型标签
                 if 'silhouette_tag_id' in outfit and outfit['silhouette_tag_id']:
-                    all_tag_ids.add(outfit['silhouette_tag_id'])
+                    val = outfit['silhouette_tag_id']
+                    if isinstance(val, list):
+                        all_tag_ids.update(val)
+                    else:
+                        all_tag_ids.add(val)
                     
                 # 颜色标签
                 if 'color_tag_id' in outfit and outfit['color_tag_id']:
@@ -641,7 +679,12 @@ def prepare_tag_data_for_storage(data):
     if 'pose_tag_ids' in data and data['pose_tag_ids']:
         db_field = get_db_field_name('pose_tag_ids')
         tag_data[db_field] = data['pose_tag_ids'] if isinstance(data['pose_tag_ids'], list) else [data['pose_tag_ids']]
-    
+
+    # 处理构图标签
+    if 'composition_tag_ids' in data and data['composition_tag_ids']:
+        db_field = get_db_field_name('composition_tag_ids')
+        tag_data[db_field] = data['composition_tag_ids'] if isinstance(data['composition_tag_ids'], list) else [data['composition_tag_ids']]
+
     # 处理模特属性标签
     if 'model_attribute_tag_ids' in data and data['model_attribute_tag_ids']:
         tag_data['model_attribute_tag_ids'] = data['model_attribute_tag_ids'] if isinstance(data['model_attribute_tag_ids'], list) else [data['model_attribute_tag_ids']]
@@ -720,9 +763,12 @@ def create_reference_image():
         
         # 生成向量嵌入
         embeddings = generate_embeddings_for_reference(data)
+
+        logger.info(data)
         
         # 收集并验证标签
         all_tag_ids = collect_all_tag_ids(data)
+
         if all_tag_ids:
             invalid_tags = validate_tag_ids(all_tag_ids)
             if invalid_tags:
@@ -744,6 +790,7 @@ def create_reference_image():
             INSERT INTO viba.reference_images (
                 reference_image_url,
                 reference_type,
+                theme_ids,
                 gen_pose_images, gen_pose_description,
                 gen_outfit_images, gen_outfit_description,
                 gen_scene_images, gen_scene_description,
@@ -752,7 +799,7 @@ def create_reference_image():
                 gen_content_prompt, gen_ml_model_source,
                 product_item_ids, can_be_used_for_face_switching,
                 pose_description, scene_description,
-                pose_tag_ids, scene_tag_ids, outfit_type_tag_ids,
+                style_tag_ids, pose_tag_ids, scene_tag_ids, composition_tag_ids, outfit_type_tag_ids,
                 model_attribute_tag_ids, fabric_tag_ids, fit_tag_ids,
                 outfit_details,
                 gen_content_embedding, gen_pose_embedding,
@@ -766,6 +813,21 @@ def create_reference_image():
         """
         
         # 准备参数 - 使用正确的映射
+        ## 将product_item_id由text转为uuid
+        product_item_ids = []
+        if data.get('product_item_ids'):
+            for i, uid in enumerate(data.get('product_item_ids', [])):
+                try:
+                    if uid.strip():  # Skip empty strings
+                        validated_uuid = str(uuid.UUID(uid.strip()))
+                        product_item_ids.append(validated_uuid)
+                except ValueError:
+                    return jsonify({
+                        'success': False,
+                        'error': f'Invalid UUID format at position {i+1}: "{uid}"'
+                    }), 400
+                
+                
         params = [
             # 基础字段
             data['reference_image_url'],
@@ -782,18 +844,20 @@ def create_reference_image():
             data.get('gen_composition_description'),
             data.get('gen_style_images', []),
             data.get('gen_style_description'),
-            data.get('gen_content_prompt'),
+            data.get('gen_content_prompt',[]),
             data.get('gen_ml_model_source'),
             
             # 匹配图相关字段
-            data.get('product_item_ids', []),
+            product_item_ids,
             data.get('can_be_used_for_face_switching'),
             data.get('pose_description'),
             data.get('scene_description'),
             
             # 标签数组字段 - 使用enriched_tags中的映射后数据
+            enriched_tags.get('style_tag_ids',[]),
             enriched_tags.get('pose_tag_ids', []),
             enriched_tags.get('scene_tag_ids', []),  # occasion_tag_ids 映射到这里
+            enriched_tags.get('composition_tag_ids',[]),
             enriched_tags.get('outfit_type_tag_ids', []),  # product_type_tag_ids 映射到这里
             enriched_tags.get('model_attribute_tag_ids', []),  # 四个模特属性合并
             enriched_tags.get('fabric_tag_ids', []),

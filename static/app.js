@@ -108,7 +108,8 @@ async function loadThemesFromAPI() {
 // 加载标签数据
 async function loadTagsFromAPI() {
     try {
-        const response = await fetch('/api/tags/all');
+        const response = await fetch('/api/tags/all',{
+                    method:'GET'});
         const result = await response.json();
         
         if (result.success) {
@@ -269,11 +270,11 @@ function initializeFallbackTagSelectors() {
     console.warn('使用 fallback 数据');
 }
 
-// 处理表单提交
+// Modified handleSubmit function
 async function handleSubmit(e) {
     e.preventDefault();
     
-    // 基础验证
+    // Basic validation
     if (!mainImage) {
         alert('请先上传主图');
         return;
@@ -285,8 +286,10 @@ async function handleSubmit(e) {
         return;
     }
     
+    const submitButton = document.getElementById('submitButton');
+    const originalText = submitButton.textContent;
+    
     try {
-        const submitButton = document.getElementById('submitButton');
         submitButton.disabled = true;
         submitButton.textContent = '提交中...';
         
@@ -304,7 +307,13 @@ async function handleSubmit(e) {
         const result = await response.json();
         
         if (result.success) {
-            alert('标注提交成功！');
+            const uuid = result.data.unique_id;
+            
+            // Display the UUID
+            displaySubmittedUUID(uuid);
+            
+            alert('标注提交成功！UUID已显示在下方历史记录中。');
+            
             if (confirm('是否清空表单以便继续标注？')) {
                 resetForm();
             }
@@ -312,10 +321,14 @@ async function handleSubmit(e) {
             throw new Error(result.error);
         }
     } catch (error) {
-        console.error('参考图上传失败:', error);
-        alert('参考图上传失败: ' + error.message);
+        console.error('提交上传失败:', error);
+        alert('提交上传失败: ' + error.message);
+    } finally {
+        submitButton.disabled = false;
+        submitButton.textContent = originalText;
     }
-};
+}
+
 
 function updateReferenceImageDisplay(type, itemId, imageData) {
     const item = document.getElementById(itemId);
@@ -479,13 +492,158 @@ function handleMainImageSelect(e) {
 }
 
 // 处理主图文件
+// 图片尺寸验证函数
+function validateImageDimensions(width, height) {
+    const minWidth = 1080;
+    const minHeight = 1440;
+    const maxWidth = 2160;
+    const maxHeight = 3840;
+
+    // 检查是否为竖屏（高度大于宽度）
+    if (height <= width) {
+        return {
+            valid: false,
+            error: '图片必须是竖屏格式（高度大于宽度）'
+        };
+    }
+
+    // 检查最小尺寸
+    if (width < minWidth) {
+        return {
+            valid: false,
+            error: `图片宽度不能少于 ${minWidth}px，当前宽度为 ${width}px`
+        };
+    }
+
+    if (height < minHeight) {
+        return {
+            valid: false,
+            error: `图片高度不能少于 ${minHeight}px，当前高度为 ${height}px`
+        };
+    }
+
+    // 检查最大尺寸
+    if (width > maxWidth || height > maxHeight) {
+        return {
+            valid: false,
+            error: `图片尺寸超出限制，最大支持 ${maxWidth}×${maxHeight}，当前为 ${width}×${height}`
+        };
+    }
+
+    return {
+        valid: true,
+        width: width,
+        height: height
+    };
+}
+
+// 显示错误信息函数
+function showImageError(message) {
+    // 移除现有的错误信息
+    const existingError = document.querySelector('.image-error-message');
+    if (existingError) {
+        existingError.remove();
+    }
+
+    // 创建错误信息元素
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'image-error-message';
+    errorDiv.style.cssText = `
+        color: #dc3545;
+        background-color: #f8d7da;
+        border: 1px solid #f5c6cb;
+        border-radius: 4px;
+        padding: 10px;
+        margin-top: 10px;
+        font-size: 14px;
+    `;
+    errorDiv.textContent = message;
+
+    // 将错误信息添加到上传区域下方
+    const uploadArea = document.getElementById('mainUploadArea');
+    uploadArea.appendChild(errorDiv);
+
+    // 5秒后自动移除错误信息
+    setTimeout(() => {
+        if (errorDiv.parentNode) {
+            errorDiv.parentNode.removeChild(errorDiv);
+        }
+    }, 5000);
+}
+
+// 验证图片文件
+function validateMainImageFile(file) {
+    return new Promise((resolve, reject) => {
+        // 检查文件类型
+        if (!file.type.match('image/(png|jpeg)')) {
+            reject({
+                valid: false,
+                error: '请上传PNG或JPG格式的图片'
+            });
+            return;
+        }
+
+        // 检查文件大小（限制在10MB以内）
+        const maxSize = 10 * 1024 * 1024; // 10MB
+        if (file.size > maxSize) {
+            reject({
+                valid: false,
+                error: '图片文件大小不能超过10MB'
+            });
+            return;
+        }
+
+        // 创建图片对象来获取尺寸
+        const img = new Image();
+        const url = URL.createObjectURL(file);
+
+        img.onload = function() {
+            const width = this.naturalWidth;
+            const height = this.naturalHeight;
+
+            // 释放对象URL
+            URL.revokeObjectURL(url);
+
+            // 验证尺寸要求
+            const validationResult = validateImageDimensions(width, height);
+            
+            if (validationResult.valid) {
+                resolve({
+                    valid: true,
+                    file: file,
+                    width: width,
+                    height: height
+                });
+            } else {
+                reject(validationResult);
+            }
+        };
+
+        img.onerror = function() {
+            URL.revokeObjectURL(url);
+            reject({
+                valid: false,
+                error: '无法读取图片文件，请确保文件格式正确'
+            });
+        };
+
+        img.src = url;
+    });
+}
+
+// 处理主图文件（带验证）
 async function handleMainImageFile(file) {
-    if (!file.type.match('image/(png|jpeg)')) {
-        alert('请上传PNG或JPG格式的图片');
-        return;
+    // 清除之前的错误信息
+    const existingError = document.querySelector('.image-error-message');
+    if (existingError) {
+        existingError.remove();
     }
 
     try {
+        // 先验证图片
+        const validationResult = await validateMainImageFile(file);
+        
+        // 验证通过，继续上传
         const formData = new FormData();
         formData.append('file', file);
         formData.append('image_type', 'reference_image');
@@ -503,7 +661,9 @@ async function handleMainImageFile(file) {
                 url: URL.createObjectURL(file),
                 s3_url: result.data.url,
                 cached: result.data.cached,
-                image_info: result.data.image_info
+                image_info: result.data.image_info,
+                width: validationResult.width,
+                height: validationResult.height
             };
 
             displayMainImage();
@@ -513,19 +673,49 @@ async function handleMainImageFile(file) {
             throw new Error(result.error);
         }
     } catch (error) {
-        console.error('主图上传失败:', error);
-        alert('主图上传失败: ' + error.message);
+        console.error('主图处理失败:', error);
+        
+        // 显示错误信息
+        if (error.error) {
+            showImageError(error.error);
+        } else {
+            showImageError('主图上传失败: ' + error.message);
+        }
+        
+        // 清空文件输入
+        const input = document.getElementById('mainImageInput');
+        if (input) input.value = '';
     }
 }
+
 
 // 显示主图
 function displayMainImage() {
     const preview = document.getElementById('mainImagePreview');
     if (preview && mainImage) {
-        preview.innerHTML = '<div style="position: relative; display: inline-block;">' +
-            '<img src="' + mainImage.url + '" class="main-image-preview" alt="主图预览">' +
-            '<button class="delete-image-btn" onclick="deleteMainImage()" style="display: flex;">×</button>' +
-            '</div>';
+        const imageInfo = mainImage.width && mainImage.height ? 
+            `<div style="
+                margin-top: 10px;
+                padding: 10px;
+                background-color: #d4edda;
+                border: 1px solid #c3e6cb;
+                border-radius: 4px;
+                font-size: 14px;
+                color: #155724;
+            ">
+                <strong>图片信息：</strong><br>
+                文件名：${mainImage.file.name}<br>
+                尺寸：${mainImage.width} × ${mainImage.height} 像素<br>
+                文件大小：${(mainImage.file.size / 1024 / 1024).toFixed(2)} MB
+            </div>` : '';
+
+        preview.innerHTML = `
+            <div style="position: relative; display: inline-block;">
+                <img src="${mainImage.url}" class="main-image-preview" alt="主图预览">
+                <button class="delete-image-btn" onclick="deleteMainImage()" style="display: flex;">×</button>
+            </div>
+            ${imageInfo}
+        `;
     }
 }
 
@@ -536,6 +726,13 @@ window.deleteMainImage = function() {
     if (preview) preview.innerHTML = '';
     const input = document.getElementById('mainImageInput');
     if (input) input.value = '';
+    
+    // 清除错误信息
+    const existingError = document.querySelector('.image-error-message');
+    if (existingError) {
+        existingError.remove();
+    }
+    
     saveToLocalStorage();
     validateForm();
 };
@@ -1089,7 +1286,7 @@ window.addOutfitDetail = function() {
     
     outfitItem.innerHTML = `
         <button type="button" class="remove-button" onclick="removeOutfitDetail('${outfitId}')">删除</button>
-        <h4>服装 ${outfitCounter}</h4>
+        <h4>服装 ${outfitCounter - 1}</h4>
         
         <div class="form-group">
             <label>产品类型 <span class="required">*</span></label>
@@ -1109,7 +1306,7 @@ window.addOutfitDetail = function() {
         <!-- 版型/廓形区域 - 分成两个独立的选择组 -->
         <div class="form-group silhouette-group">
             <label style="font-weight: bold; margin-bottom: 15px; display: block;">版型/廓形标注</label>
-            
+            <div class="note">一级标签不用更改，服装版型和廓形分别填一条最主要信息</div>
             <!-- 第一个选择组：自动选择第一个一级节点 -->
             <div class="silhouette-section" data-section="0" style="margin-bottom: 15px;">
                 <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;">
@@ -1498,7 +1695,7 @@ function saveToLocalStorage() {
     }
 }
 
-// 从本地存储加载
+// Updated loadFromLocalStorage function
 function loadFromLocalStorage() {
     try {
         const savedData = localStorage.getItem('vibaFormData');
@@ -1509,6 +1706,9 @@ function loadFromLocalStorage() {
                 displayMainImage();
             }
         }
+        
+        // Load UUID history
+        loadUUIDHistory();
     } catch (error) {
         console.error('从本地存储加载失败:', error);
     }
@@ -1614,3 +1814,117 @@ window.handleReferenceImageSelect = async function(event, type, itemId) {
     }
 }
 
+// UUID Management Functions
+
+// Display submitted UUID
+function displaySubmittedUUID(uuid) {
+    const historySection = document.getElementById('submissionHistory');
+    const uuidList = document.getElementById('uuidList');
+    
+    // Show the section
+    historySection.style.display = 'block';
+    
+    // Create UUID item
+    const uuidItem = document.createElement('div');
+    uuidItem.className = 'uuid-item';
+    
+    const timestamp = new Date().toLocaleString('zh-CN');
+    
+    uuidItem.innerHTML = `
+        <div>
+            <div class="uuid-text">${uuid}</div>
+            <div class="uuid-timestamp">提交时间: ${timestamp}</div>
+        </div>
+        <button class="copy-button" onclick="copyUUID('${uuid}', this)">复制</button>
+    `;
+    
+    // Insert at the beginning
+    uuidList.insertBefore(uuidItem, uuidList.firstChild);
+    
+    // Keep only the last 5 submissions
+    while (uuidList.children.length > 5) {
+        uuidList.removeChild(uuidList.lastChild);
+    }
+    
+    // Save to localStorage
+    saveUUIDToHistory(uuid, timestamp);
+}
+
+// Copy UUID to clipboard
+window.copyUUID = async function(uuid, button) {
+    try {
+        await navigator.clipboard.writeText(uuid);
+        const originalText = button.textContent;
+        button.textContent = '已复制';
+        button.classList.add('copied');
+        
+        setTimeout(() => {
+            button.textContent = originalText;
+            button.classList.remove('copied');
+        }, 2000);
+    } catch (err) {
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea');
+        textArea.value = uuid;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        
+        button.textContent = '已复制';
+        setTimeout(() => {
+            button.textContent = '复制';
+        }, 2000);
+    }
+};
+
+// Clear submission history
+window.clearSubmissionHistory = function() {
+    if (confirm('确定要清空提交历史吗？')) {
+        document.getElementById('uuidList').innerHTML = '';
+        document.getElementById('submissionHistory').style.display = 'none';
+        localStorage.removeItem('vibaUUIDHistory');
+    }
+};
+
+// Save UUID to localStorage
+function saveUUIDToHistory(uuid, timestamp) {
+    try {
+        let history = JSON.parse(localStorage.getItem('vibaUUIDHistory') || '[]');
+        history.unshift({ uuid, timestamp });
+        history = history.slice(0, 5); // Keep only last 5
+        localStorage.setItem('vibaUUIDHistory', JSON.stringify(history));
+    } catch (error) {
+        console.error('Failed to save UUID to history:', error);
+    }
+}
+
+// Load UUID history from localStorage
+function loadUUIDHistory() {
+    try {
+        const history = JSON.parse(localStorage.getItem('vibaUUIDHistory') || '[]');
+        if (history.length > 0) {
+            const historySection = document.getElementById('submissionHistory');
+            const uuidList = document.getElementById('uuidList');
+            
+            historySection.style.display = 'block';
+            
+            history.forEach(item => {
+                const uuidItem = document.createElement('div');
+                uuidItem.className = 'uuid-item';
+                
+                uuidItem.innerHTML = `
+                    <div>
+                        <div class="uuid-text">${item.uuid}</div>
+                        <div class="uuid-timestamp">提交时间: ${item.timestamp}</div>
+                    </div>
+                    <button class="copy-button" onclick="copyUUID('${item.uuid}', this)">复制</button>
+                `;
+                
+                uuidList.appendChild(uuidItem);
+            });
+        }
+    } catch (error) {
+        console.error('Failed to load UUID history:', error);
+    }
+}

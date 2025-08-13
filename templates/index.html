@@ -389,6 +389,49 @@
             font-style: italic;
         }
 
+        .uuid-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            margin-bottom: 10px;
+            background-color: white;
+            border: 1px solid #b8daff;
+            border-radius: 4px;
+        }
+
+        .uuid-text {
+            font-family: monospace;
+            font-size: 14px;
+            color: #155724;
+            word-break: break-all;
+        }
+
+        .copy-button {
+            padding: 5px 10px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        .copy-button:hover {
+            background-color: #0056b3;
+        }
+
+        .copy-button.copied {
+            background-color: #28a745;
+        }
+
+        .uuid-timestamp {
+            font-size: 12px;
+            color: #6c757d;
+            margin-top: 5px;
+        }
+
+
         @keyframes loading {
             0% { width: 0%; }
             50% { width: 100%; }
@@ -434,14 +477,14 @@
         <!-- 左侧面板 -->
         <div class="left-panel">
             <h2>图片上传</h2>
-            <div class="note">宽不得少于1080px，宽长比建议为9:16（1080*1920），需至少2:3（1080*1620）</div>
+            <div class="note">宽不得少于1080px，宽长比建议为3:4（1080*1440及以上）</div>
             <div class="upload-area" id="mainUploadArea">
                 <div id="uploadContent">
                     <p>拖拽图片到这里或点击上传</p>
                     <p style="color: #666; font-size: 12px;">
                         支持格式：PNG, JPG<br>
                         <strong>竖屏要求：高度必须大于宽度</strong><br>
-                        最小分辨率：1080×1620<br>
+                        最小分辨率：1080×1440<br>
                         最大分辨率：2160×3840
                     </p>
                 </div>
@@ -696,6 +739,13 @@
 
                     <button type="submit" class="submit-button" id="submitButton">提交标注</button>
                 </form>
+            </div>
+            <div id="submissionHistory" style="display: none; margin-top: 30px; padding: 20px; background-color: #d4edda; border: 1px solid #c3e6cb; border-radius: 8px;">
+                <h3 style="color: #155724; margin-bottom: 15px;">最近提交的标注</h3>
+                <div id="uuidList"></div>
+                <button type="button" onclick="clearSubmissionHistory()" style="margin-top: 10px; padding: 5px 15px; background-color: #6c757d; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                    清空历史
+                </button>
             </div>
         </div>
     </div>
