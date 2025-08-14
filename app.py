@@ -42,6 +42,9 @@ class Config:
     DB_SSLMODE = os.environ.get('DB_SSLMODE', 'prefer')
     AWS_REGION = os.environ.get('AWS_REGION', 'us-west-2')
     
+    # 嵌入功能配置
+    ENABLE_EMBEDDINGS = os.environ.get('ENABLE_EMBEDDINGS', 'true').lower() in ('true', '1', 'yes')
+    
     # S3配置
     AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID')
     AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
@@ -812,8 +815,8 @@ def create_reference_image():
                     'error': 'Matching images require can_be_used_for_face_switching field'
                 }), 400
         
-        # 生成向量嵌入
-        embeddings = generate_embeddings_for_reference(data)
+        # 生成向量嵌入（如果启用）
+        embeddings = generate_embeddings_for_reference(data) if app.config['ENABLE_EMBEDDINGS'] else {}
 
         logger.info(data)
         
@@ -1187,6 +1190,11 @@ def build_flat_structure(tags):
 def generate_embeddings_for_reference(data):
     """生成参考图的向量嵌入"""
     embeddings = {}
+    
+    # 检查是否启用嵌入功能
+    if not app.config.get('ENABLE_EMBEDDINGS', True):
+        logger.info("Embeddings disabled by configuration")
+        return embeddings
     
     if data['reference_type'] == 1:  # 生成图
         if data.get('gen_content_prompt'):

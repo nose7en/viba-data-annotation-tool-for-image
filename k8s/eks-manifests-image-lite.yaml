@@ -64,15 +64,15 @@ stringData:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: viba-image
+  name: viba-image-lite
   namespace: prod-annotation
 spec:
   replicas: 2
   selector:
-    matchLabels: { app: viba-image }
+    matchLabels: { app: viba-image-lite }
   template:
     metadata:
-      labels: { app: viba-image }
+      labels: { app: viba-image-lite }
     spec:
       serviceAccountName: annot-backend-sa
       containers:
@@ -105,25 +105,25 @@ spec:
             - name: S3_REGION
               value: "us-west-2"
             - name: ENABLE_EMBEDDINGS
-              value: "true"  # 设为 "false" 可禁用向量嵌入功能
+              value: "false"  # 禁用向量嵌入功能以节省资源
           resources:
             requests:
-              memory: "1Gi"
-              cpu: "300m"
+              memory: "512Mi"
+              cpu: "200m"
             limits:
-              memory: "2Gi"
-              cpu: "1000m"
+              memory: "1Gi"
+              cpu: "500m"
           livenessProbe:
             httpGet:
               path: /api/health
               port: 5001
-            initialDelaySeconds: 60
+            initialDelaySeconds: 30  # 减少启动时间
             periodSeconds: 30
           readinessProbe:
             httpGet:
               path: /api/health
               port: 5001
-            initialDelaySeconds: 10
+            initialDelaySeconds: 5
             periodSeconds: 5
         - name: nginx
           image: 686255979277.dkr.ecr.us-west-2.amazonaws.com/internal/annot-image-frontend:latest
@@ -144,7 +144,7 @@ spec:
             httpGet:
               path: /annot-image/
               port: 80
-            initialDelaySeconds: 30
+            initialDelaySeconds: 10
             periodSeconds: 30
           readinessProbe:
             httpGet:
@@ -161,10 +161,10 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: viba-image-svc
+  name: viba-image-lite-svc
   namespace: prod-annotation
 spec:
-  selector: { app: viba-image }
+  selector: { app: viba-image-lite }
   ports:
     - name: http
       port: 80

@@ -46,6 +46,8 @@ stringData:
 | `S3_BUCKET_NAME` | S3 存储桶名称 | - |
 | `S3_PREFIX` | S3 存储前缀 | viba-image-annotation/ |
 | `S3_REGION` | S3 区域 | us-west-2 |
+| `ENABLE_EMBEDDINGS` | 是否启用向量嵌入 | true |
+| `EMBEDDING_MODEL` | 嵌入模型名称 | sentence-transformers/... |
 
 ### 不同环境的配置示例
 
@@ -53,12 +55,19 @@ stringData:
 ```yaml
 S3_BUCKET_NAME: viba-image-dev
 S3_PREFIX: "dev/viba-image-annotation/"
+ENABLE_EMBEDDINGS: "true"
 ```
 
 #### 生产环境
 ```yaml
 S3_BUCKET_NAME: viba-image-prod
 S3_PREFIX: "prod/viba-image-annotation/"
+ENABLE_EMBEDDINGS: "true"
+```
+
+#### 轻量部署（禁用嵌入功能）
+```yaml
+ENABLE_EMBEDDINGS: "false"  # 节省内存和启动时间
 ```
 
 ## 部署步骤
@@ -133,16 +142,36 @@ kubectl logs -n prod-annotation -l app=viba-image -c nginx
 
 ### 资源限制
 
-可以根据负载调整资源配置：
+资源配置已优化以支持嵌入功能：
 
 ```yaml
 resources:
   requests:
-    memory: "512Mi"
-    cpu: "200m"
+    memory: "1Gi"    # 增加以支持嵌入模型加载
+    cpu: "300m"
   limits:
-    memory: "1Gi"
-    cpu: "500m"
+    memory: "2Gi"    # 嵌入模型 + 应用内存
+    cpu: "1000m"     # 支持 CPU 密集的嵌入计算
+```
+
+#### 不同场景的资源配置建议
+
+**启用嵌入功能**（推荐）：
+```yaml
+requests: { memory: "1Gi", cpu: "300m" }
+limits: { memory: "2Gi", cpu: "1000m" }
+```
+
+**禁用嵌入功能**（轻量模式）：
+```yaml
+requests: { memory: "512Mi", cpu: "200m" }
+limits: { memory: "1Gi", cpu: "500m" }
+```
+
+**高负载场景**：
+```yaml
+requests: { memory: "1.5Gi", cpu: "500m" }
+limits: { memory: "3Gi", cpu: "2000m" }
 ```
 
 ### 副本数量

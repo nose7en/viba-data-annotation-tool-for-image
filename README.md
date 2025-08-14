@@ -256,14 +256,30 @@ pip install numpy==1.26.0
    - 使用 IVFFlat 索引加速
    - 考虑批量处理嵌入生成
 
-## Docker 部署（可选）
+## Docker 部署
 
+### 本地开发
 ```bash
-# 使用Docker Compose
+# 使用Docker Compose（前后端分离）
 docker-compose up -d
 
 # 查看日志
 docker-compose logs -f app
+```
+
+### EKS 生产部署
+
+详细部署指南请参考：[scripts/README.md](scripts/README.md)
+
+```bash
+# 1. 初始化 Colima 和 Buildx（首次使用）
+./scripts/setup-buildx.sh
+
+# 2. 构建和推送镜像
+./scripts/ci-build-and-push.sh
+
+# 3. 部署到 EKS
+./scripts/cd-deploy.sh
 ```
 
 ## 生产部署
