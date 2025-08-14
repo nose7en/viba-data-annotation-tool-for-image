@@ -29,7 +29,7 @@ window.tagData = {
 
 // 全局配置对象
 window.tagConfig = {
-    MODEL_ATTRIBUTE_FIELDS: ['model_age', 'model_gender', 'model_race', 'model_size'],
+    MODEL_ATTRIBUTE_FIELDS: ['model_age', 'model_gender', 'model_race', 'model_fit'],
     COMPOSITION_FIELDS: ['composition_shot', 'composition_angle', 'composition_bodyratio', 'composition_position'],
     loaded: false
 };
@@ -211,7 +211,7 @@ function initializeModelAttributeSelectors() {
         { name: 'model_age', selector: 'select[name="model_age"]', label: '年龄' },
         { name: 'model_gender', selector: 'select[name="model_gender"]', label: '性别' },
         { name: 'model_race', selector: 'select[name="model_race"]', label: '种族' },
-        { name: 'model_size', selector: 'select[name="model_size"]', label: '体型' }
+        { name: 'model_fit', selector: 'select[name="model_fit"]', label: '体型' }
     ];
 
     attributeSelectors.forEach(({ name, selector, label }) => {
@@ -1227,7 +1227,7 @@ function collectModelAttributeTagIds() {
     // 使用配置中的字段列表，如果配置未加载则使用默认值
     const fields = window.tagConfig.loaded && window.tagConfig.model_attributes 
         ? window.tagConfig.model_attributes 
-        : ['model_age', 'model_gender', 'model_race', 'model_size'];
+        : ['model_age', 'model_gender', 'model_race', 'model_fit'];
     
     fields.forEach(field => {
         const selector = `select[name="${field}"]`;

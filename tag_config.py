@@ -21,7 +21,7 @@ TAG_TYPES = {
         'model_race',           # 种族
         'model_age',            # 年龄
         'model_gender',         # 性别
-        'model_size',           # 体型
+        'model_fit',            # 体型（原 model_size）
         'model_attribute',      # 模特属性（综合）
         'gender',               # 性别（通用）
         'fabric',               # 材质
@@ -35,14 +35,14 @@ TAG_TYPES = {
 
 # 前端字段到数据库字段的映射
 FIELD_MAPPING = {
-    # 前端字段名 -> 数据库字段名
-    'occasion_tag_ids': 'scene_tag_ids',           # 场合 -> 场景
-    'product_type_tag_ids': 'outfit_type_tag_ids', # 产品类型 -> 服装类型
-    'silhouette_tag_ids': 'fit_tag_ids',          # 廓形 -> 版型
-    'style_tag_ids': 'style_tag_ids',             # 风格（保持不变）
-    'pose_tag_ids': 'pose_tag_ids',               # 姿势（保持不变）
-    'fabric_tag_ids': 'fabric_tag_ids',           # 材质（保持不变）
-    'color_tag_ids': 'color_tag_ids',             # 颜色（保持不变）
+    # 前端字段名 -> 数据库字段名（字段已统一，保持同名映射）
+    'occasion_tag_ids': 'occasion_tag_ids',
+    'product_type_tag_ids': 'product_type_tag_ids',
+    'silhouette_tag_ids': 'silhouette_tag_ids',
+    'style_tag_ids': 'style_tag_ids',
+    'pose_tag_ids': 'pose_tag_ids',
+    'fabric_tag_ids': 'fabric_tag_ids',
+    'color_tag_ids': 'color_tag_ids',
 }
 
 # 模特属性相关字段
@@ -50,7 +50,7 @@ MODEL_ATTRIBUTE_FIELDS = [
     'model_age',
     'model_gender', 
     'model_race',
-    'model_size'
+    'model_fit'
 ]
 
 # 构图相关字段

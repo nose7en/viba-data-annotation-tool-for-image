@@ -7,11 +7,13 @@ from datetime import datetime
 from typing import List, Dict, Any, Optional
 import psycopg2
 from psycopg2.extras import RealDictCursor, Json
-import redis
 import json
 import hashlib
 from functools import wraps
 import uuid
+import time
+import threading
+from collections import OrderedDict
 
 # 导入自定义模块
 from image_validator import ImageValidator
@@ -43,10 +45,7 @@ class Config:
     S3_REGION = os.environ.get('S3_REGION')
     CLOUDFRONT_DOMAIN = os.environ.get('CLOUDFRONT_DOMAIN')  # 可选CDN域名
     
-    # Redis配置
-    REDIS_HOST = os.environ.get('REDIS_HOST', 'localhost')
-    REDIS_PORT = int(os.environ.get('REDIS_PORT', 6379))
-    REDIS_DB = int(os.environ.get('REDIS_DB', 0))
+    pass
 
 app.config.from_object(Config)
 
@@ -59,19 +58,61 @@ s3_uploader = S3Uploader(
     cloudfront_domain=app.config['CLOUDFRONT_DOMAIN']
 )
 
-# 初始化Redis
-try:
-    redis_client = redis.Redis(
-        host=app.config['REDIS_HOST'],
-        port=app.config['REDIS_PORT'],
-        db=app.config['REDIS_DB'],
-        decode_responses=True
-    )
-    redis_client.ping()
-    logger.info("Redis connected successfully")
-except Exception as e:
-    logger.warning(f"Redis connection failed: {str(e)}")
-    redis_client = None
+# 关闭外部缓存（原本使用 Redis）。实现轻量的进程内 TTL 缓存。
+
+class InMemoryTTLCache:
+    """线程安全的进程内 TTL 缓存，支持最大容量淘汰（近似 LRU）。"""
+    def __init__(self, maxsize: int = 512):
+        self._data: Dict[str, Any] = {}
+        self._expire_at: Dict[str, float] = {}
+        self._order: "OrderedDict[str, None]" = OrderedDict()
+        self._maxsize = maxsize
+        self._lock = threading.Lock()
+
+    def _evict_if_necessary(self):
+        # 清理过期
+        now = time.time()
+        expired_keys = [k for k, exp in self._expire_at.items() if exp <= now]
+        for k in expired_keys:
+            self._delete_unlocked(k)
+        # 容量控制
+        while len(self._order) > self._maxsize:
+            oldest_key, _ = self._order.popitem(last=False)
+            self._data.pop(oldest_key, None)
+            self._expire_at.pop(oldest_key, None)
+
+    def _delete_unlocked(self, key: str):
+        self._data.pop(key, None)
+        self._expire_at.pop(key, None)
+        self._order.pop(key, None)
+
+    def get(self, key: str):
+        with self._lock:
+            exp = self._expire_at.get(key)
+            if exp is None:
+                return None
+            if exp <= time.time():
+                self._delete_unlocked(key)
+                return None
+            # 命中，更新顺序
+            if key in self._order:
+                self._order.move_to_end(key)
+            return self._data.get(key)
+
+    def set(self, key: str, value: Any, ttl_seconds: int):
+        with self._lock:
+            self._data[key] = value
+            self._expire_at[key] = time.time() + max(1, int(ttl_seconds))
+            self._order[key] = None
+            self._order.move_to_end(key)
+            self._evict_if_necessary()
+
+    def delete(self, key: str):
+        with self._lock:
+            self._delete_unlocked(key)
+
+
+in_memory_cache = InMemoryTTLCache(maxsize=512)
 
 # 数据库连接类
 class Database:
@@ -159,44 +200,46 @@ def cache_decorator(expiration=300):
     def decorator(f):
         @wraps(f)
         def wrapper(*args, **kwargs):
-            if not redis_client:
-                return f(*args, **kwargs)
-            
-            # 生成缓存键
-            import hashlib
-            key_data = f"{f.__module__}.{f.__name__}:{str(args)}:{str(sorted(kwargs.items()))}"
-            cache_key = f"cache:{hashlib.md5(key_data.encode()).hexdigest()}"
-            
+            # 生成缓存键（函数+参数）
             try:
-                cached = redis_client.get(cache_key)
-                if cached:
-                    # 确保返回的是字典，不是Response对象
-                    cached_data = json.loads(cached)
-                    if isinstance(cached_data, dict):
-                        return cached_data
-                    else:
-                        # 如果缓存的数据格式不对，删除缓存
-                        redis_client.delete(cache_key)
-            except Exception as e:
-                logger.warning(f"Cache get error: {e}")
-                # 删除有问题的缓存
-                try:
-                    redis_client.delete(cache_key)
-                except:
-                    pass
-            
+                key_data = f"{f.__module__}.{f.__name__}:{str(args)}:{str(sorted(kwargs.items()))}"
+                cache_key = f"cache:{hashlib.md5(key_data.encode()).hexdigest()}"
+            except Exception:
+                cache_key = f"cache:{f.__module__}.{f.__name__}"
+
+            # 命中缓存则直接返回已序列化的 dict（Flask 会自动 jsonify）
+            cached_payload = in_memory_cache.get(cache_key)
+            if isinstance(cached_payload, dict):
+                return cached_payload
+
             # 执行原函数
             result = f(*args, **kwargs)
-            
-            # 只缓存成功的字典结果
-            if isinstance(result, tuple) and len(result) == 2:
-                response_data, status_code = result
-                if status_code == 200 and isinstance(response_data.get_json(), dict):
-                    try:
-                        redis_client.setex(cache_key, expiration, json.dumps(response_data.get_json()))
-                    except Exception as e:
-                        logger.warning(f"Cache set error: {e}")
-            
+
+            # 仅缓存 200 响应，且可以提取 JSON 的情况
+            try:
+                # 情况1：返回 (Response, status_code)
+                if isinstance(result, tuple) and len(result) == 2:
+                    response_obj, status_code = result
+                    if status_code == 200 and hasattr(response_obj, "get_json"):
+                        payload = response_obj.get_json(silent=True)
+                        if isinstance(payload, dict):
+                            in_memory_cache.set(cache_key, payload, expiration)
+                            return result
+                # 情况2：返回 Response 对象
+                elif hasattr(result, "get_json"):
+                    status_code = getattr(result, "status_code", 200)
+                    if status_code == 200:
+                        payload = result.get_json(silent=True)
+                        if isinstance(payload, dict):
+                            in_memory_cache.set(cache_key, payload, expiration)
+                            return result
+                # 情况3：直接返回 dict（Flask 2.x 支持）
+                elif isinstance(result, dict):
+                    in_memory_cache.set(cache_key, result, expiration)
+                    return result
+            except Exception as e:
+                logger.warning(f"In-memory cache error: {e}")
+
             return result
         return wrapper
     return decorator
@@ -424,21 +467,7 @@ def upload_image():
         # 计算文件哈希（用于去重）
         file_hash = hashlib.md5(file_data).hexdigest()
         
-        # 检查缓存
-        if redis_client:
-            cached_url = redis_client.get(f"file_hash:{file_hash}:{image_type}")
-            if cached_url:
-                return jsonify({
-                    'success': True,
-                    'data': {
-                        'url': cached_url,
-                        'cached': True,
-                        'image_info': {
-                            'width': validation_result['width'],
-                            'height': validation_result['height']
-                        }
-                    }
-                })
+        # 无外部缓存
         
         # 上传到S3
         url = s3_uploader.upload_file(
@@ -447,9 +476,7 @@ def upload_image():
             content_type=file.content_type or 'image/jpeg'
         )
         
-        # 缓存URL（24小时）
-        if redis_client:
-            redis_client.setex(f"file_hash:{file_hash}:{image_type}", 86400, url)
+        # 无外部缓存
         
         return jsonify({
             'success': True,
@@ -651,11 +678,9 @@ def prepare_tag_data_for_storage(data):
     准备标签数据用于存储
     处理字段映射和标签分组
     
-    重要映射：
-    - occasion_tag_ids (前端) -> scene_tag_ids (数据库)
-    - product_type_tag_ids (前端) -> outfit_type_tag_ids (数据库)  
-    - silhouette_tag_ids (前端) -> fit_tag_ids (数据库)
-    - model_race/age/size/gender (前端) -> model_attribute_tag_ids (数据库)
+    字段命名已对齐：
+    - occasion_tag_ids / product_type_tag_ids / silhouette_tag_ids 与数据库同名
+    - model_race/age/size/gender（前端）合并到 model_attribute_tag_ids（数据库）
     
     Args:
         data: 请求数据
@@ -670,10 +695,13 @@ def prepare_tag_data_for_storage(data):
         db_field = get_db_field_name('style_tag_ids')
         tag_data[db_field] = data['style_tag_ids'] if isinstance(data['style_tag_ids'], list) else [data['style_tag_ids']]
     
-    # 处理场合标签
-    if 'occasion_tag_ids' in data and data['occasion_tag_ids']:
-        db_field = get_db_field_name('occasion_tag_ids')  # 将返回 'scene_tag_ids'
-        tag_data[db_field] = data['occasion_tag_ids'] if isinstance(data['occasion_tag_ids'], list) else [data['occasion_tag_ids']]
+    # 处理场合标签（已与数据库对齐，兼容旧字段 scene_tag_ids）
+    occasion_ids = data.get('occasion_tag_ids')
+    if not occasion_ids and 'scene_tag_ids' in data:
+        occasion_ids = data.get('scene_tag_ids')
+    if occasion_ids:
+        db_field = get_db_field_name('occasion_tag_ids')
+        tag_data[db_field] = occasion_ids if isinstance(occasion_ids, list) else [occasion_ids]
     
     # 处理姿势标签
     if 'pose_tag_ids' in data and data['pose_tag_ids']:
@@ -712,15 +740,15 @@ def prepare_tag_data_for_storage(data):
                     else:
                         silhouette_ids.append(outfit['silhouette_tag_id'])
         
-        # 使用配置中的映射
+        # 使用配置中的映射（字段已与数据库对齐）
         if outfit_type_ids:
-            db_field = get_db_field_name('product_type_tag_ids')  # 返回 'outfit_type_tag_ids'
+            db_field = get_db_field_name('product_type_tag_ids')
             tag_data[db_field] = list(set(outfit_type_ids))
         if fabric_ids:
             db_field = get_db_field_name('fabric_tag_ids')
             tag_data[db_field] = list(set(fabric_ids))
         if silhouette_ids:
-            db_field = get_db_field_name('silhouette_tag_ids')  # 返回 'fit_tag_ids'
+            db_field = get_db_field_name('silhouette_tag_ids')
             tag_data[db_field] = list(set(silhouette_ids))
     
     return tag_data
@@ -785,25 +813,25 @@ def create_reference_image():
         
         logger.info(f"Enriched tags: {list(enriched_tags.keys())}")
         
-        # 构建插入查询
+        # 构建插入查询（对齐最新字段命名）
         insert_query = """
             INSERT INTO viba.reference_images (
                 reference_image_url,
                 reference_type,
                 theme_ids,
                 gen_pose_images, gen_pose_description,
-                gen_outfit_images, gen_outfit_description,
-                gen_scene_images, gen_scene_description,
+                gen_product_images, gen_product_description,
+                gen_occasion_images, gen_occasion_description,
                 gen_composition_images, gen_composition_description,
                 gen_style_images, gen_style_description,
                 gen_content_prompt, gen_ml_model_source,
                 product_item_ids, can_be_used_for_face_switching,
                 pose_description, scene_description,
-                style_tag_ids, pose_tag_ids, scene_tag_ids, composition_tag_ids, outfit_type_tag_ids,
-                model_attribute_tag_ids, fabric_tag_ids, fit_tag_ids,
+                style_tag_ids, pose_tag_ids, occasion_tag_ids, composition_tag_ids, product_type_tag_ids,
+                model_attribute_tag_ids, fabric_tag_ids, silhouette_tag_ids,
                 outfit_details,
                 gen_content_embedding, gen_pose_embedding,
-                gen_outfit_embedding, gen_scene_embedding,
+                gen_product_embedding, gen_occasion_embedding,
                 gen_composition_embedding, pose_embedding, scene_embedding
             ) VALUES (
                 %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
@@ -836,10 +864,12 @@ def create_reference_image():
             # 生成图相关字段
             data.get('gen_pose_images', []),
             data.get('gen_pose_description'),
-            data.get('gen_outfit_images', []),
-            data.get('gen_outfit_description'),
-            data.get('gen_scene_images', []),
-            data.get('gen_scene_description'),
+            # 兼容旧命名（gen_outfit_* -> gen_product_*）
+            data.get('gen_product_images') if data.get('gen_product_images') is not None else data.get('gen_outfit_images', []),
+            data.get('gen_product_description') if data.get('gen_product_description') is not None else data.get('gen_outfit_description'),
+            # 兼容旧命名（gen_scene_* -> gen_occasion_*）
+            data.get('gen_occasion_images') if data.get('gen_occasion_images') is not None else data.get('gen_scene_images', []),
+            data.get('gen_occasion_description') if data.get('gen_occasion_description') is not None else data.get('gen_scene_description'),
             data.get('gen_composition_images', []),
             data.get('gen_composition_description'),
             data.get('gen_style_images', []),
@@ -856,12 +886,12 @@ def create_reference_image():
             # 标签数组字段 - 使用enriched_tags中的映射后数据
             enriched_tags.get('style_tag_ids',[]),
             enriched_tags.get('pose_tag_ids', []),
-            enriched_tags.get('scene_tag_ids', []),  # occasion_tag_ids 映射到这里
+            enriched_tags.get('occasion_tag_ids', []),
             enriched_tags.get('composition_tag_ids',[]),
-            enriched_tags.get('outfit_type_tag_ids', []),  # product_type_tag_ids 映射到这里
-            enriched_tags.get('model_attribute_tag_ids', []),  # 四个模特属性合并
+            enriched_tags.get('product_type_tag_ids', []),
+            enriched_tags.get('model_attribute_tag_ids', []),
             enriched_tags.get('fabric_tag_ids', []),
-            enriched_tags.get('fit_tag_ids', []),  # silhouette_tag_ids 映射到这里
+            enriched_tags.get('silhouette_tag_ids', []),
             
             # 服装详情JSON
             Json(data.get('outfit_details', [])),
@@ -869,8 +899,8 @@ def create_reference_image():
             # 向量嵌入字段
             embeddings.get('gen_content_embedding'),
             embeddings.get('gen_pose_embedding'),
-            embeddings.get('gen_outfit_embedding'),
-            embeddings.get('gen_scene_embedding'),
+            embeddings.get('gen_product_embedding') if embeddings.get('gen_product_embedding') is not None else embeddings.get('gen_outfit_embedding'),
+            embeddings.get('gen_occasion_embedding') if embeddings.get('gen_occasion_embedding') is not None else embeddings.get('gen_scene_embedding'),
             embeddings.get('gen_composition_embedding'),
             embeddings.get('pose_embedding'),
             embeddings.get('scene_embedding')
@@ -889,9 +919,7 @@ def create_reference_image():
                 """
                 db.execute_query(theme_query, (result['unique_id'], theme_id), fetch=False)
         
-        # 清除缓存
-        if redis_client:
-            redis_client.delete('get_reference_images:*')
+        # 无外部缓存
         
         return jsonify({
             'success': True,
@@ -1016,14 +1044,11 @@ def health_check():
     except:
         db_status = 'unhealthy'
     
-    redis_status = 'healthy' if redis_client and redis_client.ping() else 'unhealthy'
-    
     return jsonify({
         'success': True,
         'status': 'healthy' if db_status == 'healthy' else 'degraded',
         'services': {
             'database': db_status,
-            'redis': redis_status,
             's3': 'configured' if app.config['AWS_ACCESS_KEY_ID'] else 'not configured'
         },
         'timestamp': datetime.now().isoformat()
@@ -1146,18 +1171,25 @@ def generate_embeddings_for_reference(data):
                 data['gen_content_prompt'], 768
             )
         
+        # 兼容旧的新字段对：
+        # gen_outfit_description -> gen_product_description
+        # gen_scene_description  -> gen_occasion_description
         fields_384 = [
             ('gen_pose_description', 'gen_pose_embedding'),
-            ('gen_outfit_description', 'gen_outfit_embedding'),
-            ('gen_scene_description', 'gen_scene_embedding'),
+            ('gen_product_description', 'gen_product_embedding'),
+            ('gen_occasion_description', 'gen_occasion_embedding'),
             ('gen_composition_description', 'gen_composition_embedding')
         ]
         
         for field_name, embedding_name in fields_384:
             if data.get(field_name):
-                embeddings[embedding_name] = embedding_service.generate_embedding(
-                    data[field_name], 384
-                )
+                embeddings[embedding_name] = embedding_service.generate_embedding(data[field_name], 384)
+            else:
+                # 兼容旧字段名
+                if field_name == 'gen_product_description' and data.get('gen_outfit_description'):
+                    embeddings['gen_product_embedding'] = embedding_service.generate_embedding(data['gen_outfit_description'], 384)
+                if field_name == 'gen_occasion_description' and data.get('gen_scene_description'):
+                    embeddings['gen_occasion_embedding'] = embedding_service.generate_embedding(data['gen_scene_description'], 384)
     
     elif data['reference_type'] == 2:  # 匹配图
         if data.get('pose_description'):
