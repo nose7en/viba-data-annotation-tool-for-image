@@ -14,6 +14,7 @@ import uuid
 import time
 import threading
 from collections import OrderedDict
+import boto3
 
 # 导入自定义模块
 from image_validator import ImageValidator
@@ -32,26 +33,28 @@ CORS(app)
 # 配置类
 class Config:
     # 数据库配置
-    POSTGRES_HOST = os.environ.get('POSTGRES_HOST')
-    POSTGRES_PORT = os.environ.get('POSTGRES_PORT')
-    POSTGRES_DB = os.environ.get('POSTGRES_DB')
-    POSTGRES_USER = os.environ.get('POSTGRES_USER')
-    POSTGRES_PASSWORD = os.environ.get('POSTGRES_PASSWORD')
+    DB_HOST = os.environ.get('DB_HOST') or os.environ.get('POSTGRES_HOST')
+    DB_PORT = os.environ.get('DB_PORT') or os.environ.get('POSTGRES_PORT')
+    DB_NAME = os.environ.get('DB_NAME') or os.environ.get('POSTGRES_DB')
+    DB_USER = os.environ.get('DB_USER') or os.environ.get('POSTGRES_USER')
+    DB_PASSWORD = os.environ.get('DB_PASSWORD') or os.environ.get('POSTGRES_PASSWORD')
+    DB_AUTH_MODE = os.environ.get('DB_AUTH_MODE', 'password')  # 'password' or 'iam'
+    DB_SSLMODE = os.environ.get('DB_SSLMODE', 'prefer')
+    AWS_REGION = os.environ.get('AWS_REGION', 'us-west-2')
     
     # S3配置
     AWS_ACCESS_KEY_ID = os.environ.get('AWS_ACCESS_KEY_ID')
     AWS_SECRET_ACCESS_KEY = os.environ.get('AWS_SECRET_ACCESS_KEY')
-    S3_BUCKET = os.environ.get('S3_BUCKET')
-    S3_REGION = os.environ.get('S3_REGION')
+    S3_BUCKET_NAME = os.environ.get('S3_BUCKET_NAME') or os.environ.get('S3_BUCKET')
+    S3_REGION = os.environ.get('S3_REGION') or os.environ.get('AWS_REGION', 'us-west-2')
+    S3_PREFIX = os.environ.get('S3_PREFIX', 'viba-image-annotation/')
     CLOUDFRONT_DOMAIN = os.environ.get('CLOUDFRONT_DOMAIN')  # 可选CDN域名
-    
-    pass
 
 app.config.from_object(Config)
 
 # 初始化S3上传器
 s3_uploader = S3Uploader(
-    bucket_name=app.config['S3_BUCKET'],
+    bucket_name=app.config['S3_BUCKET_NAME'],
     region=app.config['S3_REGION'],
     access_key_id=app.config['AWS_ACCESS_KEY_ID'],
     secret_access_key=app.config['AWS_SECRET_ACCESS_KEY'],
@@ -117,16 +120,36 @@ in_memory_cache = InMemoryTTLCache(maxsize=512)
 # 数据库连接类
 class Database:
     def __init__(self):
-        self.connection_config = {
-            'host': app.config['POSTGRES_HOST'],
-            'port': app.config['POSTGRES_PORT'],
-            'database': app.config['POSTGRES_DB'],
-            'user': app.config['POSTGRES_USER'],
-            'password': app.config['POSTGRES_PASSWORD']
+        self.base_config = {
+            'host': app.config['DB_HOST'],
+            'port': app.config['DB_PORT'],
+            'database': app.config['DB_NAME'],
+            'user': app.config['DB_USER'],
+            'sslmode': app.config['DB_SSLMODE']
         }
+        self.auth_mode = app.config['DB_AUTH_MODE']
+        self.aws_region = app.config['AWS_REGION']
+    
+    def get_iam_token(self):
+        """Generate RDS IAM authentication token"""
+        rds_client = boto3.client('rds', region_name=self.aws_region)
+        return rds_client.generate_db_auth_token(
+            DBHostname=self.base_config['host'],
+            Port=self.base_config['port'],
+            DBUsername=self.base_config['user']
+        )
     
     def get_connection(self):
-        return psycopg2.connect(**self.connection_config)
+        connection_config = self.base_config.copy()
+        
+        if self.auth_mode == 'iam':
+            # Use IAM authentication
+            connection_config['password'] = self.get_iam_token()
+        else:
+            # Use traditional password authentication
+            connection_config['password'] = app.config['DB_PASSWORD']
+        
+        return psycopg2.connect(**connection_config)
     
     def execute_query(self, query, params=None, fetch=True):
         conn = None
@@ -1049,7 +1072,7 @@ def health_check():
         'status': 'healthy' if db_status == 'healthy' else 'degraded',
         'services': {
             'database': db_status,
-            's3': 'configured' if app.config['AWS_ACCESS_KEY_ID'] else 'not configured'
+            's3': 'configured' if app.config['S3_BUCKET_NAME'] else 'not configured'
         },
         'timestamp': datetime.now().isoformat()
     })
