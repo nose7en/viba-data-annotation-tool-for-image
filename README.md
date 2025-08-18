@@ -4,7 +4,6 @@
 
 - **Flask** - Web 框架
 - **PostgreSQL + pgvector** - 数据库和向量存储
-- **Redis** - 缓存
 - **AWS S3** - 图片存储
 - **Sentence Transformers** - 文本向量嵌入
 
@@ -14,7 +13,6 @@
 
 - Python 3.11+ (推荐 3.11，3.12 也可以)
 - PostgreSQL 13+ with pgvector extension
-- Redis 6+
 - AWS S3 bucket
 
 ### 2. 安装步骤
@@ -53,11 +51,6 @@ AWS_SECRET_ACCESS_KEY=your_secret_key
 S3_BUCKET=viba-dev              # 您的S3 bucket名称
 S3_REGION=us-east-1             # 您的AWS区域
 CLOUDFRONT_DOMAIN=               # 可选，CDN域名
-
-# Redis配置
-REDIS_HOST=localhost
-REDIS_PORT=6379
-REDIS_DB=0
 
 # 应用配置
 FLASK_ENV=development
@@ -200,7 +193,7 @@ viba-dev/                           # S3 Bucket
 - `model_gender` - 模特性别
 - `model_age` - 模特年龄
 - `model_race` - 模特种族
-- `model_size` - 模特体型
+- `model_fit` - 模特体型（原 model_size）
 - 等等...
 
 ## 图片要求
@@ -237,16 +230,7 @@ pip install numpy==1.26.0
 - 使用代理或镜像源
 - 或暂时禁用嵌入功能（见上文）
 
-### 4. Redis 连接失败
-
-```bash
-# 启动Redis
-redis-server
-# 或使用Docker
-docker run -d -p 6379:6379 redis:alpine
-```
-
-### 5. S3 权限问题
+### 4. S3 权限问题
 
 确保 IAM 用户有以下权限：
 
@@ -272,14 +256,30 @@ docker run -d -p 6379:6379 redis:alpine
    - 使用 IVFFlat 索引加速
    - 考虑批量处理嵌入生成
 
-## Docker 部署（可选）
+## Docker 部署
 
+### 本地开发
 ```bash
-# 使用Docker Compose
+# 使用Docker Compose（前后端分离）
 docker-compose up -d
 
 # 查看日志
 docker-compose logs -f app
+```
+
+### EKS 生产部署
+
+详细部署指南请参考：[scripts/README.md](scripts/README.md)
+
+```bash
+# 1. 初始化 Colima 和 Buildx（首次使用）
+./scripts/setup-buildx.sh
+
+# 2. 构建和推送镜像
+./scripts/ci-build-and-push.sh
+
+# 3. 部署到 EKS
+./scripts/cd-deploy.sh
 ```
 
 ## 生产部署
@@ -304,7 +304,6 @@ location / {
 
 - 使用 `/api/health` 端点进行健康检查
 - 查看日志文件了解详细错误
-- 监控 Redis 内存使用
 - 跟踪 S3 存储使用量
 
 ## 支持

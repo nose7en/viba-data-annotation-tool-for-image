@@ -1,0 +1,12 @@
+FROM nginx:alpine
+
+# Copy static files (HTML, CSS, JS)
+COPY templates/index.html /usr/share/nginx/html/
+COPY static/ /usr/share/nginx/html/static/
+
+# Copy development nginx configuration (with API proxy)
+COPY nginx.docker-compose.conf /etc/nginx/nginx.conf
+
+EXPOSE 80
+
+CMD ["nginx", "-g", "daemon off;"]

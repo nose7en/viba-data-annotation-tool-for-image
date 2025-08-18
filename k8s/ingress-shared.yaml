@@ -1,0 +1,46 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: viba-services-ingress
+  namespace: prod-annotation
+  annotations:
+    kubernetes.io/ingress.class: alb
+    alb.ingress.kubernetes.io/scheme: internal
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/healthcheck-path: /health
+    alb.ingress.kubernetes.io/healthcheck-interval-seconds: '30'
+    alb.ingress.kubernetes.io/healthcheck-timeout-seconds: '5'
+    alb.ingress.kubernetes.io/healthy-threshold-count: '2'
+    alb.ingress.kubernetes.io/unhealthy-threshold-count: '3'
+spec:
+  ingressClassName: alb
+  rules:
+    - host: internal.n7interactive.com  # TODO: 你的域名；如无域名可去掉 host，用 ALB 默认域名访问
+      http:
+        paths:
+          # annot-theme 服务路由
+          - path: /annot-theme
+            pathType: Prefix
+            backend:
+              service:
+                name: viba-theme-svc
+                port:
+                  number: 80
+          
+          # annot-image 服务路由
+          - path: /annot-image
+            pathType: Prefix
+            backend:
+              service:
+                name: viba-image-svc
+                port:
+                  number: 80
+          
+          # API 路由 - theme 服务的原有 API 路径
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: viba-theme-svc
+                port:
+                  number: 80

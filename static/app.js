@@ -29,7 +29,7 @@ window.tagData = {
 
 // 全局配置对象
 window.tagConfig = {
-    MODEL_ATTRIBUTE_FIELDS: ['model_age', 'model_gender', 'model_race', 'model_size'],
+    MODEL_ATTRIBUTE_FIELDS: ['model_age', 'model_gender', 'model_race', 'model_fit'],
     COMPOSITION_FIELDS: ['composition_shot', 'composition_angle', 'composition_bodyratio', 'composition_position'],
     loaded: false
 };
@@ -60,7 +60,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 // 加载标签配置
 async function loadTagConfig() {
     try {
-        const response = await fetch('/api/config/tags');
+        const response = await fetch('/api/v1/annot-image/config/tags');
         const result = await response.json();
         
         if (result.success) {
@@ -82,7 +82,7 @@ async function loadTagConfig() {
 // 加载主题数据
 async function loadThemesFromAPI() {
     try {
-        const response = await fetch('/api/themes');
+        const response = await fetch('/api/v1/annot-image/themes');
         const result = await response.json();
         
         if (result.success) {
@@ -108,7 +108,7 @@ async function loadThemesFromAPI() {
 // 加载标签数据
 async function loadTagsFromAPI() {
     try {
-        const response = await fetch('/api/tags/all',{
+        const response = await fetch('/api/v1/annot-image/tags/all',{
                     method:'GET'});
         const result = await response.json();
         
@@ -211,7 +211,7 @@ function initializeModelAttributeSelectors() {
         { name: 'model_age', selector: 'select[name="model_age"]', label: '年龄' },
         { name: 'model_gender', selector: 'select[name="model_gender"]', label: '性别' },
         { name: 'model_race', selector: 'select[name="model_race"]', label: '种族' },
-        { name: 'model_size', selector: 'select[name="model_size"]', label: '体型' }
+        { name: 'model_fit', selector: 'select[name="model_fit"]', label: '体型' }
     ];
 
     attributeSelectors.forEach(({ name, selector, label }) => {
@@ -296,7 +296,7 @@ async function handleSubmit(e) {
         const formData = collectFormData();
         console.log('提交的数据:', formData);
         
-        const response = await fetch('/api/reference-images', {
+        const response = await fetch('/api/v1/annot-image/reference-images', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -648,7 +648,7 @@ async function handleMainImageFile(file) {
         formData.append('file', file);
         formData.append('image_type', 'reference_image');
 
-        const response = await fetch('/api/upload-image', {
+        const response = await fetch('/api/v1/annot-image/upload-image', {
             method: 'POST',
             body: formData
         });
@@ -1227,7 +1227,7 @@ function collectModelAttributeTagIds() {
     // 使用配置中的字段列表，如果配置未加载则使用默认值
     const fields = window.tagConfig.loaded && window.tagConfig.model_attributes 
         ? window.tagConfig.model_attributes 
-        : ['model_age', 'model_gender', 'model_race', 'model_size'];
+        : ['model_age', 'model_gender', 'model_race', 'model_fit'];
     
     fields.forEach(field => {
         const selector = `select[name="${field}"]`;
@@ -1776,7 +1776,7 @@ window.handleReferenceImageSelect = async function(event, type, itemId) {
         formData.append('file', file);
         formData.append('image_type', 'prompt_' + type);
         
-        const response = await fetch('/api/upload-image', {
+        const response = await fetch('/api/v1/annot-image/upload-image', {
             method: 'POST',
             body: formData
         });

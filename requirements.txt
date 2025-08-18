@@ -6,10 +6,8 @@ werkzeug==2.3.7
 # Database
 psycopg2-binary
 
-# Cache
-redis==5.0.0
-
-# AWS S3
+# Cache (removed external cache)
+# AWS S3 and RDS IAM
 boto3==1.28.40
 botocore==1.31.40
 
