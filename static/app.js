@@ -60,7 +60,7 @@ document.addEventListener('DOMContentLoaded', async function() {
 // 加载标签配置
 async function loadTagConfig() {
     try {
-        const response = await fetch('/api/config/tags');
+        const response = await fetch('/api/v1/annot-image/config/tags');
         const result = await response.json();
         
         if (result.success) {
@@ -82,7 +82,7 @@ async function loadTagConfig() {
 // 加载主题数据
 async function loadThemesFromAPI() {
     try {
-        const response = await fetch('/api/themes');
+        const response = await fetch('/api/v1/annot-image/themes');
         const result = await response.json();
         
         if (result.success) {
@@ -108,7 +108,7 @@ async function loadThemesFromAPI() {
 // 加载标签数据
 async function loadTagsFromAPI() {
     try {
-        const response = await fetch('/api/tags/all',{
+        const response = await fetch('/api/v1/annot-image/tags/all',{
                     method:'GET'});
         const result = await response.json();
         
@@ -296,7 +296,7 @@ async function handleSubmit(e) {
         const formData = collectFormData();
         console.log('提交的数据:', formData);
         
-        const response = await fetch('/api/reference-images', {
+        const response = await fetch('/api/v1/annot-image/reference-images', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -648,7 +648,7 @@ async function handleMainImageFile(file) {
         formData.append('file', file);
         formData.append('image_type', 'reference_image');
 
-        const response = await fetch('/api/upload-image', {
+        const response = await fetch('/api/v1/annot-image/upload-image', {
             method: 'POST',
             body: formData
         });
@@ -1776,7 +1776,7 @@ window.handleReferenceImageSelect = async function(event, type, itemId) {
         formData.append('file', file);
         formData.append('image_type', 'prompt_' + type);
         
-        const response = await fetch('/api/upload-image', {
+        const response = await fetch('/api/v1/annot-image/upload-image', {
             method: 'POST',
             body: formData
         });
