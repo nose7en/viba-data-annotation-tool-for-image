@@ -844,7 +844,6 @@ def create_reference_image():
             INSERT INTO viba.reference_images (
                 reference_image_url,
                 reference_type,
-                theme_ids,
                 gen_pose_images, gen_pose_description,
                 gen_product_images, gen_product_description,
                 gen_occasion_images, gen_occasion_description,
@@ -862,7 +861,7 @@ def create_reference_image():
             ) VALUES (
                 %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
                 %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
-                %s, %s, %s, %s, %s, %s, %s
+                %s, %s, %s, %s, %s, %s, %s, %s, %s
             ) RETURNING id, unique_id
         """
         
