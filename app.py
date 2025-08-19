@@ -289,7 +289,7 @@ def api_status():
 
 # ==================== 主题相关API ====================
 
-@app.route('/api/themes', methods=['GET'])
+@app.route('/api/v1/annot-image/themes', methods=['GET'])
 @cache_decorator(expiration=600)
 def get_themes():
     """获取所有主题"""
@@ -311,7 +311,7 @@ def get_themes():
         }), 500
 
 # ==================== 标签相关API ====================
-@app.route('/api/config/tags', methods=['GET'])
+@app.route('/api/v1/annot-image/config/tags', methods=['GET'])
 def get_tag_config():
     """获取标签配置信息（供前端使用）"""
     try:
@@ -328,7 +328,7 @@ def get_tag_config():
         }), 500
 
 
-@app.route('/api/tags/all', methods=['GET'])
+@app.route('/api/v1/annot-image/tags/all', methods=['GET'])
 @cache_decorator(expiration=600)  # 缓存2小时
 def get_all_tags():
     """一次性获取所有标签，区分多级和单级"""
@@ -465,7 +465,7 @@ def get_all_tags():
 
 # ==================== 图片上传API ====================
 
-@app.route('/api/upload-image', methods=['POST'])
+@app.route('/api/v1/annot-image/upload-image', methods=['POST'])
 def upload_image():
     """上传单张图片到S3"""
     try:
@@ -521,7 +521,7 @@ def upload_image():
 
 
 
-@app.route('/api/upload-batch', methods=['POST'])
+@app.route('/api/v1/annot-image/upload-batch', methods=['POST'])
 def upload_batch_images():
     """批量上传图片"""
     try:
@@ -784,7 +784,7 @@ def prepare_tag_data_for_storage(data):
 # ==================== 参考图管理API ====================
 # ==================== 修改后的 create_reference_image 函数 ====================
 
-@app.route('/api/reference-images', methods=['POST'])
+@app.route('/api/v1/annot-image/reference-images', methods=['POST'])
 def create_reference_image():
     """创建参考图标注"""
     try:
