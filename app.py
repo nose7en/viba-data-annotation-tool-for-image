@@ -860,7 +860,7 @@ def create_reference_image():
                 gen_composition_embedding, pose_embedding, scene_embedding
             ) VALUES (
                 %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
-                %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
+                %s::uuid[], %s, %s, %s, %s, %s, %s, %s, %s, %s, %s,
                 %s, %s, %s, %s, %s, %s, %s, %s, %s
             ) RETURNING id, unique_id
         """
