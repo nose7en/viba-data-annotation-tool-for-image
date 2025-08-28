@@ -1348,7 +1348,7 @@ window.addOutfitDetail = function() {
                 <select class="form-control" name="product_type_level2" disabled onchange="updateOutfitLevel3(this)">
                     <option value="">选择二级类别</option>
                 </select>
-                <select class="form-control" name="product_type_level3" disabled onchange="updateOutfitLevel4(this)>
+                <select class="form-control" name="product_type_level3" disabled onchange="updateOutfitLevel4(this)">
                     <option value="">选择三级类别</option>
                 </select>
                 <select class="form-control" name="product_type_level4" disabled>
