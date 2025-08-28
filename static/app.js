@@ -938,11 +938,16 @@ function updateOutfitLevel2(select) {
     
     const level2Select = container.querySelector('select[name="product_type_level2"]');
     const level3Select = container.querySelector('select[name="product_type_level3"]');
+    const level4Select = container.querySelector('select[name="product_type_level4"]'); 
     
     if (!level2Select || !level3Select) return;
     
     level2Select.innerHTML = '<option value="">选择二级类别</option>';
     level3Select.innerHTML = '<option value="">选择三级类别</option>';
+    if (level4Select) { // Add these lines
+        level4Select.innerHTML = '<option value="">选择四级类别</option>';
+        level4Select.disabled = true;
+    }
     level3Select.disabled = true;
     
     const selectedLevel1Id = select.value;
@@ -971,9 +976,13 @@ function updateOutfitLevel3(select) {
     if (!container) return;
     
     const level3Select = container.querySelector('select[name="product_type_level3"]');
-    if (!level3Select) return;
+    const level4Select = container.querySelector('select[name="product_type_level4"]');
+    
+    if (!level3Select || !level4Select) return;
     
     level3Select.innerHTML = '<option value="">选择三级类别</option>';
+    level4Select.innerHTML = '<option value="">选择四级类别</option>';
+    level4Select.disabled = true;
     
     const selectedLevel2Id = select.value;
     if (!selectedLevel2Id) {
@@ -994,6 +1003,48 @@ function updateOutfitLevel3(select) {
         }
     }
 }
+
+function updateOutfitLevel4(select) {
+    const container = select.closest('.outfit-item');
+    if (!container) return;
+    
+    const level4Select = container.querySelector('select[name="product_type_level4"]');
+    if (!level4Select) return;
+    
+    level4Select.innerHTML = '<option value="">选择四级类别</option>';
+    
+    const selectedLevel3Id = select.value;
+    if (!selectedLevel3Id) {
+        level4Select.disabled = true;
+        return;
+    }
+    
+    if (window.tagData.loaded && window.tagData.multi_level.product_type) {
+        const productData = window.tagData.multi_level.product_type;
+        
+        // Use cascade level4_by_parent data
+        if (productData.cascade && productData.cascade.level4_by_parent && productData.cascade.level4_by_parent[selectedLevel3Id]) {
+            const level4Options = productData.cascade.level4_by_parent[selectedLevel3Id];
+            
+            if (level4Options.length > 0) {
+                level4Select.disabled = false;
+                level4Options.forEach(tag => {
+                    const option = document.createElement('option');
+                    option.value = tag.value;
+                    option.textContent = tag.label;
+                    level4Select.appendChild(option);
+                });
+            } else {
+                level4Select.disabled = true;
+                level4Select.innerHTML = '<option value="">该分类下暂无四级类别</option>';
+            }
+        } else {
+            level4Select.disabled = true;
+            level4Select.innerHTML = '<option value="">该分类下暂无四级类别</option>';
+        }
+    }
+}
+
 
 // 切换标签选中状态
 function toggleTag(button) {
@@ -1300,6 +1351,9 @@ window.addOutfitDetail = function() {
                 <select class="form-control" name="product_type_level3" disabled>
                     <option value="">选择三级类别</option>
                 </select>
+                <select class="form-control" name="product_type_level4" disabled>
+                    <option value="">选择四级类别</option>
+                </select>
             </div>
         </div>
         
@@ -1505,6 +1559,7 @@ function collectOutfitDetails() {
         const productLevel1 = item.querySelector('select[name="product_type_level1"]');
         const productLevel2 = item.querySelector('select[name="product_type_level2"]');
         const productLevel3 = item.querySelector('select[name="product_type_level3"]');
+        const productLevel4 = item.querySelector('select[name="product_type_level4"]');
         
         if (productLevel1 && productLevel1.value) {
             productTagIds.add(parseInt(productLevel1.value));
@@ -1514,6 +1569,9 @@ function collectOutfitDetails() {
         }
         if (productLevel3 && productLevel3.value) {
             productTagIds.add(parseInt(productLevel3.value));
+        }
+        if (productLevel4 && productLevel4.value) {
+            productTagIds.add(parseInt(productLevel4.value));
         }
         
         if (productTagIds.size > 0) {
