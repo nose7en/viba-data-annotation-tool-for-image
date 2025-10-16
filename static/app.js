@@ -1682,7 +1682,11 @@ function collectFormData() {
         // 匹配图字段
         const productIds = document.getElementById('productIds')?.value?.trim();
         if (productIds) {
-            formData.product_item_ids = productIds.split(',').map(id => id.trim()).filter(id => id);
+            // 收集商品 unique_id 列表（用户输入的应该是 unique_id）
+            // 后端会验证这些 unique_id 是否真实存在于 products 表
+            formData.product_item_ids = productIds.split(',')
+                                              .map(id => id.trim())
+                                              .filter(id => id);
         }
         
         const poseDesc = document.getElementById('poseDescription')?.value?.trim();
