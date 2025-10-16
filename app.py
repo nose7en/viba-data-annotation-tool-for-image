@@ -866,13 +866,28 @@ def create_reference_image():
         """
         
         # 准备参数 - 使用正确的映射
-        ## 将product_item_id由text转为uuid
+        ## 验证并转换 product_item_id: 检查 unique_id 是否真实存在
         product_item_ids = []
         if data.get('product_item_ids'):
             for i, uid in enumerate(data.get('product_item_ids', [])):
                 try:
                     if uid.strip():  # Skip empty strings
+                        # Validate UUID format
                         validated_uuid = str(uuid.UUID(uid.strip()))
+                        
+                        # Query database to verify the unique_id exists
+                        verify_query = """
+                            SELECT id FROM viba.products 
+                            WHERE unique_id = %s AND is_active = TRUE
+                        """
+                        result = db.execute_query(verify_query, (validated_uuid,))
+                        
+                        if not result:
+                            return jsonify({
+                                'success': False,
+                                'error': f'Product with unique_id "{validated_uuid}" at position {i+1} not found or is inactive'
+                            }), 400
+                        
                         product_item_ids.append(validated_uuid)
                 except ValueError:
                     return jsonify({
